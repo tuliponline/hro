@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/userModel.dart';
+import 'package:hro/utility/fireStore.dart';
 import 'package:hro/utility/style.dart';
 import 'package:provider/provider.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -38,17 +40,19 @@ class FirstState extends State<FirstPage> {
         await googleUser.authentication;
     final AuthCredential credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken, accessToken: googleAuth.accessToken);
-    await FirebaseAuth.instance.signInWithCredential(credential).then((value)  async{
+
+    await FirebaseAuth.instance
+        .signInWithCredential(credential)
+        .then((value) async {
       appDataModel.profileEmail = value.user.email;
       appDataModel.profileName = value.user.displayName;
       appDataModel.profileUid = value.user.uid;
       appDataModel.profilePhotoUrl = value.user.photoURL;
       appDataModel.profilePhone = value.user.phoneNumber;
       appDataModel.profileEmailVerify = value.user.emailVerified;
-       _checkHaveUser(context.read<AppDataModel>());
-
-    }
-    );
+      appDataModel.loginProvider = credential.providerId;
+      _checkHaveUser(context.read<AppDataModel>());
+    });
   }
 
 // facebook login
@@ -68,11 +72,9 @@ class FirstState extends State<FirstPage> {
           appDataModel.profilePhotoUrl = value.user.photoURL;
           appDataModel.profilePhone = value.user.phoneNumber;
           appDataModel.profileEmailVerify = value.user.emailVerified;
+          _checkHaveUser(context.read<AppDataModel>());
 
-        _checkHaveUser(context.read<AppDataModel>());
 
-          // Navigator.pushNamedAndRemoveUntil(
-          //     context, '/home-page', (route) => false);
         });
         break;
       case FacebookLoginStatus.cancelledByUser:
@@ -90,85 +92,62 @@ class FirstState extends State<FirstPage> {
   }
 
   _checkLogin(AppDataModel appDataModel) async {
-    await FirebaseAuth.instance.authStateChanges().listen((event) async{
-      if (event != null) {
-        appDataModel.profileUid = event.uid;
-        appDataModel.profileEmail = event.email;
-        appDataModel.profileName = event.displayName;
-        appDataModel.profilePhotoUrl = event.photoURL;
-        appDataModel.profilePhone = event.phoneNumber;
-        appDataModel.profileEmailVerify = event.emailVerified;
-
-       _checkHaveUser(context.read<AppDataModel>());
-
-        // Navigator.pushNamedAndRemoveUntil(
-        //     context, '/home-page', (route) => false);
-
-      } else {
-        print("non Login");
-        setState(() {
-          checkLogin = true;
-        });
-      }
-    });
+    final FirebaseAuth auth = await FirebaseAuth.instance;
+    final User user = auth.currentUser;
+    if (user != null) {
+      print(user.displayName);
+      appDataModel.profileUid = user.uid;
+      appDataModel.profileEmail = user.email;
+      appDataModel.profileName = user.displayName;
+      appDataModel.profilePhotoUrl = user.photoURL;
+      appDataModel.profilePhone = user.phoneNumber;
+      appDataModel.profileEmailVerify = user.emailVerified;
+      Navigator.pushNamedAndRemoveUntil(
+          context, '/home-page', (route) => false);
+    } else {
+      print("non login");
+      setState(() {
+        checkLogin = true;
+      });
+    }
   }
 
   _checkHaveUser(AppDataModel appDataModel) async {
-    var apiUrl = Uri.parse(appDataModel.server + '/users/uid');
-    print(apiUrl);
-    var responseGetUserDetail = await http.post(
-      (apiUrl),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, String>{
-        'uid': appDataModel.profileUid,
-      }),
-    );
-    print(
-        'CheckUserDB StatusCode' + responseGetUserDetail.statusCode.toString());
-    if (responseGetUserDetail.statusCode == 204) {
-      print(appDataModel.profileUid);
-      var responseAddUser = await http.post(
-        (Uri.parse(appDataModel.server + '/users/add')),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          "uid": appDataModel.profileUid.toString(),
-          "name": appDataModel.profileName,
-          "phone": appDataModel.profilePhone,
-          "email": appDataModel.profileEmail,
-          "photo_url": appDataModel.profilePhotoUrl,
-          "location": "1234565",
-          "status": '1'
-        }),
-      );
-      print('addUser ' + responseAddUser.body.toString());
-      if (responseAddUser.statusCode == 200){
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/home-page', (route) => false);
-      }else{
-        checkLogin = true;
-      }
+    CollectionReference users = FirebaseFirestore.instance.collection('users');
+    await users.doc(appDataModel.profileUid).get().then((value) {
+      print('have User = ' + value['email']);
+      appDataModel.profileUid = value['uid'];
+      appDataModel.profileEmail = value['email'];
+      appDataModel.profileName = value['name'];
+      appDataModel.profilePhotoUrl = value['photo_url'];
+      appDataModel.profilePhone = value['phone'];
+      appDataModel.profileStatus = value['status'];
 
-    } else if (responseGetUserDetail.statusCode == 200) {
-      print('getUserData' + responseGetUserDetail.body.toString());
-      var rowData = utf8.decode(responseGetUserDetail.bodyBytes);
-      var rowDataEdit = rowData.substring(1, rowData.length - 1);
-      UserModel _userDetail = userModelFromJson(rowDataEdit);
-     appDataModel.profileUid = _userDetail.uid;
-      appDataModel.profileName = _userDetail.name;
-      appDataModel.profilePhone = _userDetail.phone;
-      appDataModel.profileEmail = _userDetail.email;
-      appDataModel.profilePhotoUrl = _userDetail.photoUrl;
-      appDataModel.profileLocation = _userDetail.location;
-      appDataModel.profileStatus = _userDetail.status;
 
       Navigator.pushNamedAndRemoveUntil(
           context, '/home-page', (route) => false);
+    }).catchError((onError) async {
+      print('NotHaveUser = sddNew');
+      UserModel model = UserModel(
+          uid: appDataModel.profileUid,
+          name: appDataModel.profileName,
+          phone: appDataModel.profilePhone,
+          email: appDataModel.profileEmail,
+          photoUrl: appDataModel.profilePhotoUrl,
+          location: appDataModel.profileLocation,
+          status: '2');
+      Map<String, dynamic> data = model.toJson();
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(appDataModel.profileUid)
+          .set(data)
+          .then((value) {
+        print('addNewUser complete');
+        Navigator.pushNamedAndRemoveUntil(
+            context, '/home-page', (route) => false);
+      });
+    });
 
-    }
   }
 
   @override
@@ -360,7 +339,9 @@ class FirstState extends State<FirstPage> {
                         ],
                       )),
                     )
-                  : Center(child: Style().circularProgressIndicator(Style().darkColor)),
+                  : Center(
+                      child:
+                          Style().circularProgressIndicator(Style().darkColor)),
             ));
   }
 
