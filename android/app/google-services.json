@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "167777517376",
+    "project_id": "hro-authen",
+    "storage_bucket": "hro-authen.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167777517376:android:a7629e59c99370b60544a5",
+        "android_client_info": {
+          "package_name": "hroth.hro"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "167777517376-ld9c3ta0asl1ju79f8hqa2694bbj6j0o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "hroth.hro",
+            "certificate_hash": "989bf3a1d21826254f25b05d2d71665e9bd122a7"
+          }
+        },
+        {
+          "client_id": "167777517376-ndbq6fadf7m8cn6uuht33tdicin96udd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxMKzKpgBrSCtnhJq1kpOPbRHQ5p-30Nk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "167777517376-ndbq6fadf7m8cn6uuht33tdicin96udd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
