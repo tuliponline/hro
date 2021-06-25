@@ -22,14 +22,14 @@ class ProductsModel {
     this.shopLocation,
   });
 
-  int productId;
+  String productId;
   String shopUid;
   String productName;
   String productPhotoUrl;
   String productDetail;
   String productPrice;
   String productTime;
-  int productStatus;
+  String productStatus;
   String shopName;
   String shopLocation;
 

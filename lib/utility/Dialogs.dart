@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hro/utility/regexText.dart';
+import 'package:hro/utility/style.dart';
 import 'package:http/http.dart' as http;
 import 'package:toast/toast.dart';
 
@@ -31,12 +32,12 @@ class Dialogs {
             actions: [
               FlatButton(
                   onPressed: () {
-                   Navigator.pop(context,'cancel');
+                   Navigator.pop(context,[false,'cancel']);
                   },
                   child: Text('ยกเลิก')),FlatButton(
                   onPressed: () {
                     if (_textFildControlor.text.length > 0) {
-                      Navigator.pop(context, _textFildControlor.text);
+                      Navigator.pop(context, [true,_textFildControlor.text]);
                     } else {
                       Toast.show("โปรดกรอกข้อมูล", context,
                           duration: Toast.LENGTH_SHORT, gravity: Toast.CENTER);
@@ -138,9 +139,9 @@ class Dialogs {
               FlatButton(
                   onPressed: () => _confirmResult(true, context),
                   child: Text('ตกลง')),
-              FlatButton(
-                  onPressed: () => _confirmResult(false, context),
-                  child: Text('ยกเลิก'))
+              // FlatButton(
+              //     onPressed: () => _confirmResult(false, context),
+              //     child: Text('ยกเลิก'))
             ],
           );
         });
@@ -172,7 +173,7 @@ class Dialogs {
         barrierDismissible: true,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text(title),
+            title: Style().textSizeColor(title, 16, Style().textColor),
             content: SingleChildScrollView(
               child: Row(
                 children: [
@@ -188,7 +189,7 @@ class Dialogs {
                     child: Padding(
                       padding: const EdgeInsets.only(left: 10),
                       child: ListBody(
-                        children: [Text(description)],
+                        children: [Style().textSizeColor(description, 14, Style().textColor),],
                       ),
                     ),
                   ),
@@ -197,11 +198,12 @@ class Dialogs {
             ),
             actions: [
               FlatButton(
-                  onPressed: () => _confirmResult(true, context),
-                  child: Text('ตกลง')),
+              onPressed: () => _confirmResult(false, context),
+          child: Style().textSizeColor('ยกเลิก', 14, Colors.blueAccent),),
+
               FlatButton(
-                  onPressed: () => _confirmResult(false, context),
-                  child: Text('ยกเลิก'))
+                onPressed: () => _confirmResult(true, context),
+                child: Style().textSizeColor('ตกลง', 14, Colors.blueAccent),),
             ],
           );
         });

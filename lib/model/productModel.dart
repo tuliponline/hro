@@ -20,14 +20,14 @@ class ProductModel {
     this.productStatus,
   });
 
-  int productId;
-  String shopUid;
-  String productName;
-  String productPhotoUrl;
-  String productDetail;
-  String productPrice;
-  String productTime;
-  int productStatus;
+  dynamic productId;
+  dynamic shopUid;
+  dynamic productName;
+  dynamic productPhotoUrl;
+  dynamic productDetail;
+  dynamic productPrice;
+  dynamic productTime;
+  dynamic productStatus;
 
   factory ProductModel.fromJson(Map<String, dynamic> json) => ProductModel(
     productId: json["product_id"],

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -40,24 +41,27 @@ class MenuState extends State<MenuPage> {
   bool getProductsStatus = false;
 
   _getProduct(AppDataModel appDataModel) async {
-    var apiUrl = Uri.parse(appDataModel.server + '/products/shop_uid');
-    print('getProductURL ' + apiUrl.toString());
-    var responseGetProducts = await http.post(
-      (apiUrl),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, String>{
-        'shop_uid': appDataModel.profileUid,
-      }),
-    );
-    if (responseGetProducts.statusCode == 200) {
-      var rowData = utf8.decode(responseGetProducts.bodyBytes);
-      appDataModel.productsData = productsModelFromJson(rowData);
-    }else{
+    CollectionReference products =
+        FirebaseFirestore.instance.collection('products');
+    await products
+        .where('product_status', isEqualTo: '1')
+        .where('shop_uid', isEqualTo: appDataModel.profileUid)
+        .get()
+        .then((value) {
+      List<DocumentSnapshot> templist;
+      List list = new List();
+      templist = value.docs;
+      list = templist.map((DocumentSnapshot docSnapshot) {
+        return docSnapshot.data();
+      }).toList();
+      var jsobData = jsonEncode(list);
+      appDataModel.productsData = productsModelFromJson(jsobData);
+    }).catchError((onError) {
       appDataModel.productsData = null;
-    }
+      print(onError.toString());
+    });
     setState(() {
+      print('11 = ' + appDataModel.productsData.length.toString());
       getProductsStatus = true;
     });
   }
@@ -70,17 +74,17 @@ class MenuState extends State<MenuPage> {
         builder: (context, appDataModel, child) => Scaffold(
               resizeToAvoidBottomInset: false,
               appBar: AppBar(
-                iconTheme: IconThemeData(color: Style().shopPrimaryColor),
+                iconTheme: IconThemeData(color: Style().darkColor),
                 backgroundColor: Colors.white,
                 bottomOpacity: 0.0,
                 elevation: 0.0,
                 title: Style().textSizeColor(
-                    'รายการสินค้า', 18, Style().shopPrimaryColor),
+                    'สินค้าของคุณ', 18, Style().darkColor),
                 actions: [
                   IconButton(
                       icon: Icon(
                         FontAwesomeIcons.sync,
-                        color: Style().shopPrimaryColor,
+                        color: Style().darkColor,
                       ),
                       onPressed: () {
                         getProductsStatus = false;
@@ -89,7 +93,7 @@ class MenuState extends State<MenuPage> {
                   IconButton(
                       icon: Icon(
                         FontAwesomeIcons.plusCircle,
-                        color: Style().shopPrimaryColor,
+                        color: Style().darkColor,
                       ),
                       onPressed: () async {
                         await _addMenuDialog(
@@ -722,7 +726,6 @@ class MenuState extends State<MenuPage> {
                       await _updateProduct(
                           context.read<AppDataModel>(), 'update', _productData);
                       popupSelect = true;
-
                     },
                   ),
                 ],
@@ -747,39 +750,26 @@ class MenuState extends State<MenuPage> {
   }
 
   _updateProduct(
-      AppDataModel appDataModel, String cmd, ProductModel productData) async {
+    AppDataModel appDataModel,
+    String cmd,
+    ProductModel productData,
+  ) async {
     if (cmd == 'delete') {
       var bodyData;
       print("productid " + productData.productId.toString());
-      bodyData = jsonEncode(<String, dynamic>{
-        'product_id': productData.productId.toString(),
-        'product_status': "0"
-      });
-      var responseUpdateProduct = await http.put(
-        (Uri.parse(appDataModel.server + '/products/update')),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: bodyData,
-      );
 
-      if (responseUpdateProduct.statusCode == 200) {
-        await dialogs.information(
-            context,
-            Style().textSizeColor('สำเร็จ', 16, Style().textColor),
-            Style().textSizeColor(
-                'แก้ไขสินค้าเรียบร้อยแล้ว', 14, Style().textColor));
+      CollectionReference products =
+          FirebaseFirestore.instance.collection('products');
+      await products
+          .doc(productData.productId)
+          .update({'product_status': '0'}).then((value) {
         popupSelect = true;
-      } else {
-        print(responseUpdateProduct.statusCode.toString());
-        await dialogs.information(
-            context,
-            Style().textSizeColor('ผิดพลาด', 16, Style().textColor),
-            Style()
-                .textSizeColor('โปลดลองใหม่อีกครั้ง', 14, Style().textColor));
-        popupSelect = true;
-        // Navigator.pop(context);
-      }
+        Navigator.pop(context);
+        print('delete OK');
+      }).catchError((error) {
+        print("Failed to update user: $error");
+        normalDialog(context, 'ผิดพลาด', 'โปรดลองใหม่อีกครั้ง');
+      });
     } else {
       if ((_nameFood.text?.isEmpty ?? true) ||
           (_detailFood.text?.isEmpty ?? true) ||
@@ -787,6 +777,12 @@ class MenuState extends State<MenuPage> {
         normalDialog(context, 'ข้อมูลไม่ครบ', 'โปรดกรอกข้อมูลสินค้าให้ครบ');
       } else {
         if (file != null) {
+          await FirebaseStorage.instance
+              .refFromURL(photoUrl)
+              .delete()
+              .then((value) {
+            print("deleteComplete");
+          });
           Random random = Random();
           int i = random.nextInt(100000);
           final _firebaseStorage = FirebaseStorage.instance;
@@ -800,37 +796,23 @@ class MenuState extends State<MenuPage> {
         }
       }
 
-      var responseUpdateProduct =
-          await http.put((Uri.parse(appDataModel.server + '/products/update')),
-              headers: <String, String>{
-                'Content-Type': 'application/json; charset=UTF-8',
-              },
-              body: jsonEncode(
-                <String, String>{
-                  "product_id": productData.productId.toString(),
-                  "product_name": _nameFood.text,
-                  "product_photoUrl": photoUrl,
-                  "product_detail": _detailFood.text,
-                  "product_price": _priceFood.text,
-                  "product_time": timeFood.toString()
-                },
-              ));
-      if (responseUpdateProduct.statusCode == 200) {
-        await dialogs.information(
-            context,
-            Style().textSizeColor('สำเร็จ', 16, Style().textColor),
-            Style().textSizeColor(
-                'แก้ไขสินค้าเรียบร้อยแล้ว', 14, Style().textColor));
+      CollectionReference products =
+          FirebaseFirestore.instance.collection('products');
+      await products.doc(productData.productId).update({
+        'product_name': _nameFood.text,
+        'product_detail': _detailFood.text,
+        'product_price': _priceFood.text,
+        'product_time' : timeFood.toString(),
+        'product_photoUrl' : photoUrl
+      }).then((value) {
+        print('update OK');
         popupSelect = true;
         Navigator.pop(context);
-      } else {
-        print(responseUpdateProduct.body.toString());
-        await dialogs.information(
-            context,
-            Style().textSizeColor('ผิดพลาด', 16, Style().textColor),
-            Style().textSizeColor(
-                'เกิดข้อผิดพลาดโปรดลองใหม่อีกครั้ง', 14, Style().textColor));
-      }
+      }).catchError((error) {
+        print("Failed to update user: $error");
+        normalDialog(context, 'ผิดพลาด', 'โปรดลองใหม่อีกครั้ง');
+      });
+
     }
   }
 
@@ -854,36 +836,36 @@ class MenuState extends State<MenuPage> {
         photoUrl = downloadUrl;
         print('photoUrl' + photoUrl);
 
-        var responseAddProduct = await http.post(
-          (Uri.parse(appDataModel.server + '/products/add')),
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode(<String, String>{
-            "shop_uid": appDataModel.profileUid,
-            "product_name": _nameFood.text,
-            "product_photoUrl": photoUrl,
-            "product_detail": _detailFood.text,
-            "product_price": _priceFood.text,
-            "product_time": timeFood.toString(),
-            "product_status": "1"
-          }),
-        );
-        if (responseAddProduct.statusCode == 200) {
-          await dialogs.information(
-              context,
-              Style().textSizeColor('สำเร็จ', 16, Style().textColor),
-              Style().textSizeColor(
-                  'เพิ่มสินค้าเรียบร้อยแล้ว', 14, Style().textColor));
-          popupSelect = true;
-          Navigator.pop(context);
-        } else {
-          await dialogs.information(
-              context,
-              Style().textSizeColor('ผิดพลาด', 16, Style().textColor),
-              Style().textSizeColor(
-                  'เกิดข้อผิดพลาดโปรดลองใหม่อีกครั้ง', 14, Style().textColor));
-        }
+        ProductModel productModel = ProductModel(
+            shopUid: appDataModel.profileUid,
+            productName: _nameFood.text,
+            productPhotoUrl: photoUrl,
+            productDetail: _detailFood.text,
+            productPrice: _priceFood.text.toString(),
+            productTime: timeFood.toString(),
+            productStatus: '1');
+        Map<String, dynamic> data = productModel.toJson();
+
+        String docId;
+        CollectionReference products =
+            FirebaseFirestore.instance.collection('products');
+        await products.add(data).then((value) async {
+          print('doc Id = ' + value.id);
+          docId = value.id.toString();
+          await products
+              .doc(docId)
+              .update({'product_id': docId}).then((value) async {
+            // await  normalDialog(context, 'สำเร็จ', 'เพิ่มสินค้าเรียบร้อยแล้ว');
+            popupSelect = true;
+            Navigator.pop(context);
+          }).catchError((error) {
+            print("Failed to update user: $error");
+            normalDialog(context, 'ผิดพลาด', 'โปรดลองใหม่อีกครั้ง');
+          });
+        }).catchError((error) {
+          print("Failed to update user: $error");
+          normalDialog(context, 'ผิดพลาด', 'โปรดลองใหม่อีกครั้ง');
+        });
       }
     }
   }

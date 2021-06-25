@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:badges/badges.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
@@ -8,11 +10,13 @@ import 'package:flutter_facebook_login/flutter_facebook_login.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hro/model/AppDataModel.dart';
+import 'package:hro/model/driverModel.dart';
+import 'package:hro/model/orderModel.dart';
 import 'package:hro/model/shopModel.dart';
 import 'package:hro/utility/Dialogs.dart';
+import 'package:hro/utility/snapshot2list.dart';
 import 'package:hro/utility/style.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 
 class MyDrawer extends StatefulWidget {
   static final FacebookLogin facebookSignIn = new FacebookLogin();
@@ -24,10 +28,65 @@ class MyDrawer extends StatefulWidget {
 
 class _MyDrawerState extends State<MyDrawer> {
   Dialogs dialogs = Dialogs();
+  int orderShop = 0;
+  int orderDriver = 0;
+  FirebaseFirestore db = FirebaseFirestore.instance;
+  List<OrderList> orderList;
+  bool getData = false;
+
+  _checkOrderShop(AppDataModel appDataModel) {
+    orderShop = 0;
+    db
+        .collection('orders')
+        .where('shopId', isEqualTo: appDataModel.profileUid)
+        .get()
+        .then((value) async {
+      var jsonData = await setList2Json(value);
+      print(jsonData);
+      orderList = orderListFromJson(jsonData);
+      orderList.forEach((e) {
+        if (e.status == '2' || e.status == '3') {
+          orderShop += 1;
+        }
+      });
+
+      _checkOrderDriver(context.read<AppDataModel>());
+    });
+  }
+
+  _checkOrderDriver(AppDataModel appDataModel) {
+    orderDriver = 0;
+    db
+        .collection('orders')
+        .where('driver', isEqualTo: appDataModel.profileUid)
+        .get()
+        .then((value) async {
+      var jsonData = await setList2Json(value);
+      print(jsonData);
+      orderList = orderListFromJson(jsonData);
+      orderList.forEach((e) {
+        if (e.status == '1' ||
+            e.status == '2' ||
+            e.status == '3' ||
+            e.status == '4' ||
+            e.status == '9') {
+          orderDriver += 1;
+        }
+      });
+
+      setState(() {
+        getData = true;
+        print("uid= " + appDataModel.profileUid);
+        print("orderShop Count = " + orderShop.toString());
+        print("orderDriver Count = " + orderDriver.toString());
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
+    if (getData == false) _checkOrderShop(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
         builder: (context, appDataModel, child) => SafeArea(
               child: Container(
@@ -96,16 +155,22 @@ class _MyDrawerState extends State<MyDrawer> {
                         children: [
                           Expanded(
                               child: ListTile(
+                            onTap: () async {
+                              await Navigator.pushNamed(
+                                  context, '/orderList-page');
+                              setState(() {});
+                            },
                             leading: Icon(
                               FontAwesomeIcons.clipboardList,
                               color: Style().darkColor,
                               size: 30,
                             ),
-                            title: Style().textBlack54('รายการ'),
+                            title: Style().textBlack54('รายการ Order'),
                           ))
                         ],
                       ),
                     ),
+
                     Container(
                       // color: Colors.grey,
                       child: Row(
@@ -113,13 +178,53 @@ class _MyDrawerState extends State<MyDrawer> {
                         children: [
                           Expanded(
                               child: ListTile(
-                            leading: Icon(
-                              FontAwesomeIcons.wallet,
-                              color: Style().darkColor,
-                              size: 30,
-                            ),
-                            title: Style().textBlack54('ช่องทางชำระเงิน'),
-                          ))
+                                  onTap: () {
+                                    _checkHaveShop(
+                                        context.read<AppDataModel>());
+                                  },
+                                  leading: Icon(
+                                    FontAwesomeIcons.store,
+                                    color: Style().shopDarkColor,
+                                    size: 30,
+                                  ),
+                                  title: (orderShop == 0)
+                                      ? Style().textSizeColor(
+                                          'ร้านค้า', 14, Style().shopDarkColor)
+                                      : Row(
+                                          children: [
+                                            Container(
+                                              margin: EdgeInsets.only(right: 5),
+                                              child: Style().textSizeColor(
+                                                  'ร้านค้า',
+                                                  14,
+                                                  Style().shopDarkColor),
+                                            ),
+                                            Badge(
+                                              position: BadgePosition.topEnd(
+                                                  top: 0, end: 3),
+                                              animationDuration:
+                                                  Duration(milliseconds: 300),
+                                              animationType:
+                                                  BadgeAnimationType.slide,
+                                              badgeContent: Text(
+                                                orderShop.toString(),
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10),
+                                              ),
+                                              // child: IconButton(
+                                              //     icon: Icon(
+                                              //       FontAwesomeIcons.receipt,
+                                              //       color: Style().darkColor,
+                                              //     ),
+                                              //     onPressed: () {
+                                              //       setState(() {
+                                              //         Navigator.pushNamed(context,"/orderList-page");
+                                              //       });
+                                              //     }),
+                                            ),
+                                          ],
+                                        )))
                         ],
                       ),
                     ),
@@ -131,36 +236,47 @@ class _MyDrawerState extends State<MyDrawer> {
                           Expanded(
                               child: ListTile(
                             onTap: () {
-                              _checkHaveShop(context.read<AppDataModel>());
-                            },
-                            leading: Icon(
-                              FontAwesomeIcons.store,
-                              color: Style().shopDarkColor,
-                              size: 30,
-                            ),
-                            title: Style().textSizeColor(
-                                'ร้านค้า', 14, Style().shopDarkColor),
-                          ))
-                        ],
-                      ),
-                    ),
-                    Container(
-                      // color: Colors.grey,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                              child: ListTile(
-                            onTap: () {
-                              Navigator.pushNamed(context, '/shop-page');
+                              _checkHaveDrivers(context.read<AppDataModel>());
                             },
                             leading: Icon(
                               FontAwesomeIcons.motorcycle,
                               color: Style().drivePrimaryColor,
                               size: 30,
                             ),
-                            title: Style().textSizeColor(
-                                'บริการจัดส่ง', 14, Style().drivePrimaryColor),
+                            title: (orderDriver == 0)? Style().textSizeColor(
+                                'Rider', 14, Style().drivePrimaryColor):Row(
+                              children: [
+                                Container(
+                                  margin: EdgeInsets.only(right: 5),
+                                  child: Style().textSizeColor(
+                                      'Rider', 14, Style().drivePrimaryColor),
+                                ),
+                                Badge(
+                                  position: BadgePosition.topEnd(
+                                      top: 0, end: 3),
+                                  animationDuration:
+                                  Duration(milliseconds: 300),
+                                  animationType:
+                                  BadgeAnimationType.slide,
+                                  badgeContent: Text(
+                                    orderDriver.toString(),
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10),
+                                  ),
+                                  // child: IconButton(
+                                  //     icon: Icon(
+                                  //       FontAwesomeIcons.receipt,
+                                  //       color: Style().darkColor,
+                                  //     ),
+                                  //     onPressed: () {
+                                  //       setState(() {
+                                  //         Navigator.pushNamed(context,"/orderList-page");
+                                  //       });
+                                  //     }),
+                                ),
+                              ],
+                            )
                           ))
                         ],
                       ),
@@ -199,40 +315,53 @@ class _MyDrawerState extends State<MyDrawer> {
             ));
   }
 
-  _checkHaveShop(AppDataModel appDataModel) async {
-    var apiUrl = Uri.parse(appDataModel.server + '/shops/uid');
-    print(apiUrl);
-    var responseGetShopDetail = await http.post(
-      (apiUrl),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, String>{
-        'shop_uid': appDataModel.profileUid,
-      }),
-    );
-    if (responseGetShopDetail.statusCode == 204) {
-      bool result = await dialogs.confirm(context, 'เปิดร้าน',
-          'ต้องการเปิดร้านค้า ?', Icon(FontAwesomeIcons.store));
-      if (result == true) {
-        Navigator.pushNamed(context, "/shopSetup-page",arguments: 'NEW');
+  _checkHaveDrivers(AppDataModel appDataModel) async {
+    CollectionReference drivers =
+        FirebaseFirestore.instance.collection('drivers');
+    await drivers.doc(appDataModel.profileUid).get().then((value) async {
+      if (value.data() != null) {
+        print('haveDriver = ' + jsonEncode(value.data()));
+        Navigator.pushNamed(context, '/driver-page', arguments: 'OLD');
+      } else {
+        print('NorHaveShops');
+        bool result = await dialogs.confirm(context, 'สมัคร Rider',
+            'ต้องการสมัคร Rider ?', Icon(Icons.motorcycle));
+        if (result == true) {
+          Navigator.pushNamed(context, "/driverSetup-page", arguments: 'NEW');
+        }
       }
-    }else if(responseGetShopDetail.statusCode == 200){
+    }).catchError((onError) async {
+      print("error " + onError.toString());
+      print('NotHaveDriver= addNew');
+    });
+  }
 
-      var rowData = utf8.decode(responseGetShopDetail.bodyBytes);
-      var rowDataEdit = rowData.substring(1, rowData.length - 1);
-      ShopModel shopModel = shopModelFromJson(rowDataEdit);
-      appDataModel.shopName = shopModel.shopName;
-      appDataModel.shopPhotoUrl = shopModel.shopPhotoUrl;
-      appDataModel.shopType = shopModel.shopType;
-      appDataModel.shopPhone = shopModel.shopPhone;
-      appDataModel.shopAddress = shopModel.shopAddress;
-      appDataModel.shopLocation = shopModel.shopLocation;
-      appDataModel.shopTime = shopModel.shopTime;
-      appDataModel.shopStatus = shopModel.shopStatus;
-
-
-      Navigator.pushNamed(context,  '/shop-page',arguments: 'OLD');
-    }
+  _checkHaveShop(AppDataModel appDataModel) async {
+    CollectionReference shops = FirebaseFirestore.instance.collection('shops');
+    await shops.doc(appDataModel.profileUid).get().then((value) async {
+      if (value.data() != null) {
+        print('haveShops');
+        ShopModel shopData = (shopModelFromJson(jsonEncode(value.data())));
+        appDataModel.shopName = shopData.shopName;
+        appDataModel.shopPhotoUrl = shopData.shopPhotoUrl;
+        appDataModel.shopType = shopData.shopType;
+        appDataModel.shopPhone = shopData.shopPhone;
+        appDataModel.shopAddress = shopData.shopAddress;
+        appDataModel.shopLocation = shopData.shopLocation;
+        appDataModel.shopTime = shopData.shopTime;
+        appDataModel.shopStatus = shopData.shopStatus;
+        Navigator.pushNamed(context, '/shop-page', arguments: 'OLD');
+      } else {
+        print('NorHaveShops');
+        bool result = await dialogs.confirm(context, 'เปิดร้าน',
+            'ต้องการเปิดร้านค้า ?', Icon(FontAwesomeIcons.store));
+        if (result == true) {
+          Navigator.pushNamed(context, "/shopSetup-page", arguments: 'NEW');
+        }
+      }
+    }).catchError((onError) async {
+      print("error" + onError.toString());
+      print('NotHaveUser = addNew');
+    });
   }
 }

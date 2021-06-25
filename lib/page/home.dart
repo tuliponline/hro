@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'dart:math';
 
+import 'package:badges/badges.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_facebook_login/flutter_facebook_login.dart';
@@ -11,7 +16,12 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/allShopModel.dart';
+import 'package:hro/model/cartModel.dart';
+import 'package:hro/model/orderModel.dart';
 import 'package:hro/model/productsModel.dart';
+import 'package:hro/model/shopModel.dart';
+import 'package:hro/page/orderDetail.dart';
+import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/dialog.dart';
 import 'package:hro/utility/style.dart';
 import 'package:hro/widget/myDrawer.dart';
@@ -27,54 +37,116 @@ class HomePage extends StatefulWidget {
   }
 }
 
+// _realtimeDB(){
+//   FirebaseFirestore.instance.collection('orders').doc
+// }
+
 class HomeState extends State<HomePage> {
+  Dialogs dialogs = Dialogs();
+
   static final FacebookLogin facebookSignIn = new FacebookLogin();
   static final GoogleSignIn googleSignIn = new GoogleSignIn();
 
   bool getAllShopStatus = false;
+  int orderNew = 0;
+  int pcs = 0;
+  int orderActiveCount = 0;
+  List<OrderList> orderList;
 
   _getAllShop(AppDataModel appDataModel) async {
-    if (getAllShopStatus == false) {
-      var apiUrl = Uri.parse(appDataModel.server + '/shops/all');
-      print(apiUrl);
-      var responseGetShopAll = await http.post(
-        (apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, int>{
-          'limit': 20,
-        }),
-      );
-      if (responseGetShopAll.statusCode == 200) {
-        var rowData = utf8.decode(responseGetShopAll.bodyBytes);
-        appDataModel.allShopData = await allShopModelFromJson(rowData);
-        print('allshop ' + appDataModel.allShopData.length.toString());
-        _getAllProduct(context.read<AppDataModel>());
-      }
-    }
+    //get Notification token
+    FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
+    String token = await firebaseMessaging.getToken();
+    print('NotiToken = ' + token.toString());
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(appDataModel.profileUid)
+        .update({'token': token});
+    appDataModel.token = token;
+
+    CollectionReference shops = FirebaseFirestore.instance.collection('shops');
+    await shops.get().then((value) {
+      List<DocumentSnapshot> templist;
+      List list = new List();
+      templist = value.docs;
+      list = templist.map((DocumentSnapshot docSnapshot) {
+        return docSnapshot.data();
+      }).toList();
+      var jsonData = jsonEncode(list);
+      //print('allShopJsonData' + jsonData.toString());
+      appDataModel.allShopData = allShopModelFromJson(jsonData);
+      appDataModel.allFullShopData = allShopModelFromJson(jsonData);
+
+      print(appDataModel.allShopData.length);
+      _getAllProduct(context.read<AppDataModel>());
+    }).catchError((onError) {
+      appDataModel.allShopData = null;
+      print(onError.toString());
+    });
   }
 
   _getAllProduct(AppDataModel appDataModel) async {
-    var apiUrl = Uri.parse(appDataModel.server + '/productShop/all');
-    print(apiUrl);
-    var responseGetProductAll = await http.post(
-      (apiUrl),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, int>{
-        'limit': 20,
-      }),
-    );
-    if (responseGetProductAll.statusCode == 200) {
-      var rowData = utf8.decode(responseGetProductAll.bodyBytes);
-      appDataModel.allProductsData = await productsModelFromJson(rowData);
-      print('allshop ' + appDataModel.allShopData.length.toString());
-      setState(() {
-        getAllShopStatus = true;
+    CollectionReference products =
+        FirebaseFirestore.instance.collection('products');
+    await products
+        .where('product_status', isEqualTo: '1')
+        .limit(10)
+        .get()
+        .then((value) {
+      List<DocumentSnapshot> templist;
+      List list = new List();
+      templist = value.docs;
+      list = templist.map((DocumentSnapshot docSnapshot) {
+        return docSnapshot.data();
+      }).toList();
+      var jsonData = jsonEncode(list);
+      //print('allProductJsonData' + jsonData.toString());
+      appDataModel.allProductsData = productsModelFromJson(jsonData);
+      print(appDataModel.allProductsData.length);
+    }).catchError((onError) {
+      appDataModel.allProductsData = null;
+      print(onError.toString());
+    });
+    await _getOrder(context.read<AppDataModel>());
+    // getOrder
+
+    setState(() {
+      // print('AllProduct = ' + appDataModel.allProductsData.length.toString());
+      getAllShopStatus = true;
+    });
+  }
+
+  Future<Null> _getOrder(AppDataModel appDataModel) async {
+    print('grtOrder');
+    orderActiveCount = 0;
+    await FirebaseFirestore.instance
+        .collection('orders')
+        .where('customerId', isEqualTo: appDataModel.profileUid)
+        .get()
+        .then((value) {
+      List<DocumentSnapshot> templist;
+      List list = new List();
+      templist = value.docs;
+      list = templist.map((DocumentSnapshot docSnapshot) {
+        return docSnapshot.data();
+      }).toList();
+
+      var jsonData = jsonEncode(list);
+      orderList = orderListFromJson(jsonData);
+      orderList.forEach((element) {
+        if (element.status == '1' ||
+            element.status == '2' ||
+            element.status == '3' ||
+            element.status == '4') {
+          orderActiveCount += 1;
+        }
       });
-    }
+
+      print('orderList' + orderList.length.toString());
+    }).catchError((onError) {
+      print('GetOrder = ' + onError.toString());
+    });
+    print('EndgrtOrder');
   }
 
   static int refreshNum = 10; // number that changes when refreshed
@@ -96,80 +168,131 @@ class HomeState extends State<HomePage> {
     });
   }
 
+  _loadData() {
+    // CollectionReference reference = FirebaseFirestore.instance.collection('orders');
+    // reference.snapshots().listen((querySnapshot) {
+    //   querySnapshot.docChanges.forEach((e) {
+    //     print('data = ' + e.doc.id);
+    //   });
+    //
+    //   // print('changData'+querySnapshot.docChanges.toString());
+    // });
+  }
+
+  _Notififation() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification}');
+        // await normalDialog(context, message.notification.title + '',
+        //      message.notification.body);
+        print(message.notification.title);
+        var result = await dialogs.confirm(context, message.notification.title,
+            message.notification.body, Icon(FontAwesomeIcons.question));
+        print("nowPage = " + ModalRoute.of(context).settings.name);
+      }
+    });
+  }
+
+  void initState() {
+    super.initState();
+    _Notififation();
+  }
+
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
-    _getAllShop(context.read<AppDataModel>());
+
+    _loadData();
+    if (getAllShopStatus == false) _getAllShop(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
         builder: (context, appDataModel, child) => Scaffold(
-              key: _scaffoldKey,
-              appBar: AppBar(
-                iconTheme: IconThemeData(color: Style().darkColor),
-                backgroundColor: Colors.white,
-                bottomOpacity: 0.0,
-                elevation: 0.0,
-                // leading: IconButton(
-                //     icon: Icon(
-                //       Icons.menu,
-                //       color: Style().darkColor,
-                //     ),
-                //     onPressed: () {}),
-                title: Style().textDarkAppbar('เฮาะ อากาศเดลิเวอรี่'),
-                actions: [
-                  IconButton(
-                      icon: Icon(
-                        Icons.search,
-                        color: Style().darkColor,
-                      ),
-                      onPressed: () {}),
-                  IconButton(
-                      icon: Icon(
-                        Icons.message,
-                        color: Style().darkColor,
-                      ),
-                      onPressed: () {}),
-                  IconButton(
-                      icon: Icon(
-                        Icons.shopping_cart,
-                        color: Style().darkColor,
-                      ),
-                      onPressed: () {}),
-                ],
-              ),
-              drawer: Drawer(
-                child: MyDrawer(),
-              ),
-              body: Container(
-                color: Colors.grey.shade200,
-                child: Center(
-                  child: LiquidPullToRefresh(
-                    // key if you want to add
-                    color: Colors.white,
-                    backgroundColor: Style().darkColor,
-                    springAnimationDurationInMilliseconds: 3,
-                    showChildOpacityTransition: false,
-                    onRefresh: _handleRefresh,
-                    height: 50,
-                    child: ListView(
-                      children: [
-                        Column(
-                          // mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding:
-                                  EdgeInsets.only(left: 10, right: 10, top: 10),
-                              child: buildMainMenu(),
-                            ),
-                            buildPopularProduct(),
-                            buildPopularShop((context.read<AppDataModel>()))
-                          ],
+            key: _scaffoldKey,
+            appBar: AppBar(
+              iconTheme: IconThemeData(color: Style().darkColor),
+              backgroundColor: Colors.white,
+              bottomOpacity: 0.0,
+              elevation: 0.0,
+              // leading: IconButton(
+              //     icon: Icon(
+              //       Icons.menu,
+              //       color: Style().darkColor,
+              //     ),
+              //     onPressed: () {}),
+              title: Style().textDarkAppbar('เฮาะ อากาศเดลิเวอรี่'),
+              actions: [
+                (orderActiveCount == 0)
+                    ? IconButton(
+                        icon: Icon(
+                          FontAwesomeIcons.receipt,
+                          color: Style().darkColor,
                         ),
-                      ],
+                        onPressed: () {
+                          setState(() {
+                            pcs += 1;
+                          });
+                        })
+                    : Badge(
+                        position: BadgePosition.topEnd(top: 0, end: 3),
+                        animationDuration: Duration(milliseconds: 300),
+                        animationType: BadgeAnimationType.slide,
+                        badgeContent: Text(
+                          orderActiveCount.toString(),
+                          style: TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                        child: IconButton(
+                            icon: Icon(
+                              FontAwesomeIcons.receipt,
+                              color: Style().darkColor,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                Navigator.pushNamed(context, "/orderList-page");
+                              });
+                            }),
+                      ),
+                IconButton(
+                    icon: Icon(
+                      Icons.search,
+                      color: Style().darkColor,
                     ),
+                    onPressed: () {}),
+              ],
+            ),
+            drawer: Drawer(
+              child: MyDrawer(),
+            ),
+            body: Container(
+              color: Colors.grey.shade200,
+              child: Center(
+                child: LiquidPullToRefresh(
+                  // key if you want to add
+                  color: Colors.white,
+                  backgroundColor: Style().darkColor,
+                  springAnimationDurationInMilliseconds: 3,
+                  showChildOpacityTransition: false,
+                  onRefresh: _handleRefresh,
+                  height: 50,
+                  child: ListView(
+                    children: [
+                      Column(
+                        // mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Container(
+                          //   padding:
+                          //       EdgeInsets.only(left: 10, right: 10, top: 10),
+                          //   child: buildMainMenu(),
+                          // ),
+                          buildPopularProduct(),
+                          buildPopularShop((context.read<AppDataModel>())),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ));
+            )));
   }
 
   Row buildMainMenu() {
@@ -259,7 +382,7 @@ class HomeState extends State<HomePage> {
                   const EdgeInsets.only(left: 15, right: 10, top: 8, bottom: 8),
               child: Row(
                 children: [
-                  Style().textBlackSize('สิ้นค้าและบริการ ยอดนิยม', 18),
+                  Style().textBlackSize('ยอดนิยม', 18),
                   Icon(
                     Icons.star,
                     size: 15,
@@ -291,65 +414,97 @@ class HomeState extends State<HomePage> {
 
   _setPopularProduct(AppDataModel appDataModel) {
     List<ProductsModel> productsModel = appDataModel.allProductsData;
+
     return (productsModel == null)
-        ? Row(
-            children: [Style().circularProgressIndicator(Style().darkColor)],
+        ? Container(
+            width: appDataModel.screenW,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [Style().circularProgressIndicator(Style().darkColor)],
+            ),
           )
         : Row(
             children: productsModel.map((e) {
               int i = productsModel.indexOf(e);
-              return Container(
-                margin: EdgeInsets.only(left: 10),
-                height: 230,
-                width: 150,
-                // color: (i.isEven) ? Colors.redAccent: Colors.green,
-                child: Column(
-                  children: [
-                    Container(
-                      height: 150,
-                      width: 150,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.white,
-                        image: DecorationImage(
-                          fit: BoxFit.fill,
-                          image: (productsModel[i].productPhotoUrl == null)
-                              ? AssetImage("assets/images/food_icon.png")
-                              : NetworkImage(productsModel[i].productPhotoUrl),
+
+              ShopModel shopModel;
+              for (var shop in appDataModel.allFullShopData) {
+                if (shop.shopUid == e.shopUid) {
+                  shopModel = shopModelFromJson(jsonEncode(shop));
+                }
+              }
+              return InkWell(
+                onTap: () async {
+                  appDataModel.productSelectId = e.productId;
+                  Navigator.pushNamed(context, "/showProduct-page");
+                  // setState(() {
+                  //   appDataModel.allPcs = 0;
+                  //   appDataModel.allPrice = 0;
+                  //   for (CartModel orderItem in appDataModel.currentOrder) {
+                  //     int sumPrice =
+                  //         int.parse(orderItem.pcs) * int.parse(orderItem.price);
+                  //
+                  //     appDataModel.allPcs += int.parse(orderItem.pcs);
+                  //     appDataModel.allPrice += sumPrice;
+                  //   }
+                  // }
+                  // );
+                },
+                child: Container(
+                  margin: EdgeInsets.only(left: 10),
+                  height: 230,
+                  width: 150,
+                  // color: (i.isEven) ? Colors.redAccent: Colors.green,
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 150,
+                        width: 150,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.white,
+                          image: DecorationImage(
+                            fit: BoxFit.fitHeight,
+                            image: (productsModel[i].productPhotoUrl == null)
+                                ? AssetImage("assets/images/food_icon.png")
+                                : NetworkImage(
+                                    productsModel[i].productPhotoUrl),
+                          ),
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Style().textBlackSize(
-                              productsModel[i].productName +
-                                  " - " +
-                                  productsModel[i].shopName,
-                              14),
-                          Row(
-                            children: [
-                              Style().textBlackSize(
-                                  productsModel[i].productPrice + ' ฿  ', 12),
-                              Style().textBlackSize(
-                                  '20 นาที / 1.2 กม.', 10)
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.motorcycle,
-                                size: 20,
-                              ),
-                              Style().textBlackSize(' 20 ฿', 12),
-                            ],
-                          )
-                        ],
-                      ),
-                    )
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Style().textBlackSize(
+                                productsModel[i].productName +
+                                    " - " +
+                                    shopModel.shopName,
+                                14),
+                            Row(
+                              children: [
+                                Style().textSizeColor(
+                                    productsModel[i].productPrice + ' ฿  ',
+                                    14,
+                                    Style().darkColor),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.motorcycle,
+                                  size: 20,
+                                ),
+                                Style().textSizeColor(
+                                    ' 20 ฿', 12, Style().shopPrimaryColor),
+                              ],
+                            )
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
                 ),
               );
             }).toList(),
@@ -399,69 +554,70 @@ class HomeState extends State<HomePage> {
               for (int i = 0; i < appDataModel.allShopData.length; i++)
                 Row(
                   children: [
-                    Container(
-                      margin: EdgeInsets.only(left: 10, bottom: 8),
-                      height: 100,
+                    InkWell(
+                      onTap: () async {
+                        appDataModel.storeSelectId =
+                            appDataModel.allShopData[i].shopUid;
+                        await Navigator.pushNamed(context, '/store-page');
+                        appDataModel.currentOrder = [];
+                        //appDataModel.currentOrder.clear();
+                      },
+                      child: Container(
+                        margin: EdgeInsets.only(left: 10, bottom: 8),
+                        height: 100,
 
-                      //color: Colors.green,
-                      child: Row(
-                        children: [
-                          Container(
-                            height: 100,
-                            width: 100,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(5),
-                              color: Colors.white,
-                              image: DecorationImage(
-                                fit: BoxFit.fill,
-                                image: NetworkImage(
-                                    appDataModel.allShopData[i].shopPhotoUrl),
+                        //color: Colors.green,
+                        child: Row(
+                          children: [
+                            Container(
+                              height: 100,
+                              width: 100,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(5),
+                                color: Colors.white,
+                                image: DecorationImage(
+                                  fit: BoxFit.fitHeight,
+                                  image: NetworkImage(
+                                      appDataModel.allShopData[i].shopPhotoUrl),
+                                ),
                               ),
                             ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Style().textBlackSize(
-                                    appDataModel.allShopData[i].shopName +
-                                        "-" +
-                                        appDataModel.allShopData[i].shopAddress,
-                                    14),
-                                Row(
-                                  children: [
-                                    Style().textBlackSize('1.5 กม. ', 10),
-                                    Icon(
-                                      Icons.star,
-                                      size: 15,
-                                      color: Colors.orange,
-                                    ),
-                                    Style().textBlackSize(' 3.4', 10)
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    Style().textBlackSize(
-                                        appDataModel.allShopData[i].shopType,
-                                        10),
-                                  ],
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Row(
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Style().textBlackSize(
+                                      appDataModel.allShopData[i].shopName +
+                                          "-" +
+                                          appDataModel
+                                              .allShopData[i].shopAddress,
+                                      14),
+                                  // Row(
+                                  //   children: [
+                                  //     Style().textBlackSize('1.5 กม. ', 10),
+                                  //     Icon(
+                                  //       Icons.star,
+                                  //       size: 15,
+                                  //       color: Colors.orange,
+                                  //     ),
+                                  //     Style().textBlackSize(' 3.4', 10)
+                                  //   ],
+                                  // ),
+                                  Row(
                                     children: [
-                                      (i.isEven)
-                                          ? Style().textDark('เปิด')
-                                          : Style().textSizeColor(
-                                              'ปิด', 14, Colors.redAccent),
+                                      Style().textBlackSize(
+                                          appDataModel.allShopData[i].shopType,
+                                          10),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
-                          )
-                        ],
+                                  paddingShopOpen(
+                                      appDataModel.allShopData[i].shopTime),
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -469,5 +625,59 @@ class HomeState extends State<HomePage> {
             ],
           )
         : Container();
+  }
+
+  Padding paddingShopOpen(String shopTime) {
+    bool shopOpen = false;
+    var now = DateTime.now();
+    int dayNum = now.weekday;
+    List<String> statusTimeAll = shopTime.split(",");
+    for (int i = 0; i < statusTimeAll.length - 1; i++) {
+      if (dayNum == i + 1) {
+        List<String> statusTime = statusTimeAll[i].split("/");
+        if (statusTime[0] == "close") {
+          shopOpen = false;
+        } else {
+          List<String> openClose = statusTime[1].split('-');
+          List<String> openHM = openClose[0].split(':');
+          List<String> closeHM = openClose[1].split(':');
+          final startTime = DateTime(now.year, now.month, now.day,
+              int.parse(openHM[0]), int.parse(openHM[1]));
+          final endTime = DateTime(now.year, now.month, now.day,
+              int.parse(closeHM[0]), int.parse(closeHM[1]));
+          // final startTime = DateTime(now.year, now.month, now.day, 01, 0);
+          // final endTime = DateTime(now.year, now.month, now.day, 23,0);
+          final currentTime = DateTime.now();
+          (currentTime.isAfter(startTime) && currentTime.isBefore(endTime))
+              ? shopOpen = true
+              : shopOpen = false;
+        }
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          (shopOpen == true)
+              ? Container(
+                  padding: EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Style().darkColor,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Style().textSizeColor('เปิด', 12, Colors.white),
+                )
+              : Container(
+                  padding: EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Style().textSizeColor('ปิด', 12, Colors.white),
+                ),
+        ],
+      ),
+    );
   }
 }

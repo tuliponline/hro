@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'package:hro/model/allShopModel.dart';
+import 'package:hro/model/driverModel.dart';
 import 'package:hro/model/productsModel.dart';
+import 'package:hro/model/shopModel.dart';
 import 'package:hro/model/userModel.dart';
 import 'package:http/http.dart' as http;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'cartModel.dart';
+
 class AppDataModel {
-
-
-
   double _screenW;
 
   double get screenW => _screenW;
@@ -23,19 +24,14 @@ class AppDataModel {
 
   String uid = '';
   String server = "http://58d7046b2892.sn.mynetname.net:3000";
-  String basicAuth ="";
-
-
-
-
-
+  String basicAuth = "";
   String _port = "8000";
-
   String get port => _port;
-
   set port(String port) {
     _port = port;
   }
+
+  String noTiServer = 'https://us-central1-hro-authen.cloudfunctions.net/hello';
 
   String _user = "";
 
@@ -53,8 +49,6 @@ class AppDataModel {
     _password = password;
   }
 
-
-
   //-----profile Data--------
   String profileEmail;
   String profileName;
@@ -65,6 +59,7 @@ class AppDataModel {
   String profileLocation;
   String profileStatus;
 
+  String loginProvider;
   bool profilePhoneVerify = false;
   bool profileEmailVerify = false;
 
@@ -81,13 +76,61 @@ class AppDataModel {
   String shopStatus;
 
   //-----allShop----
-List<AllShopModel> allShopData;
+  List<AllShopModel> allShopData;
+  List<AllShopModel> allFullShopData;
 
 //----product Model
-List<ProductsModel> productsData;
-
+  List<ProductsModel> productsData;
   List<ProductsModel> allProductsData;
 
+//----driVers Data
+  DriversModel driverData;
 
+//-----productSelect
+  String productSelectId;
+
+  List<CartModel> currentOrder = [];
+  int allPcs = 0;
+  int allPrice = 0;
+
+  String orderAddressComment = "";
+
+  //---storeData
+  String storeSelectId;
+  ShopModel currentShopSelect;
+  List<ProductsModel> storeProductsData;
+
+  bool shopOpen;
+
+  //----Order
+  String _orderIdSelected;
+
+  String get orderIdSelected => _orderIdSelected;
+
+  set orderIdSelected(String orderIdSelected) {
+    _orderIdSelected = orderIdSelected;
+  }
+
+  //---location
+  double latStart = 17.591244;
+  double lngStart = 103.979989;
+  double latYou;
+  double lngYou;
+
+  String _distanceDelivery;
+
+  String get distanceDelivery => _distanceDelivery;
+
+  set distanceDelivery(String distanceDelivery) {
+    _distanceDelivery = distanceDelivery;
+  }
+
+  //Notification
+String _token;
+  String get token => _token;
+
+  set token(String token) {
+    _token = token;
+  }
 
 }

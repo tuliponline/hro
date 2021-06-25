@@ -1,15 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/shopModel.dart';
 import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/dialog.dart';
+import 'package:hro/utility/getAddressName.dart';
+import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/style.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:time_range_picker/time_range_picker.dart';
 import 'package:http/http.dart' as http;
@@ -38,13 +43,13 @@ class ShopSetupState extends State<ShopSetupPage> {
       shopPhotoUrl,
       shopStatus;
   List<String> daysName = [
-    'อาทิตย์',
     'จันทร์',
     'อังคาร',
     'พุธ',
     'พฤหัสบดี',
     'ศุกร์',
-    'เสาร์'
+    'เสาร์',
+    'อาทิตย์'
   ];
   List<bool> days = [true, true, true, true, true, true, true];
   List<String> open = ['8:00', '8:00', '8:00', '8:00', '8:00', '8:00', '8:00'];
@@ -63,6 +68,26 @@ class ShopSetupState extends State<ShopSetupPage> {
   bool getShopDataStatus = false;
   ShopModel shopData;
 
+
+  double lat,lng;
+  String addressName;
+
+  Future<Null> _getLocation() async {
+    LocationData locationData = await getLocationData();
+    lat = locationData.latitude;
+    lng = locationData.longitude;
+
+    addressName = await getAddressName(lat, lng);
+    shopLocation = '$lat,$lng';
+    print('address = $addressName');
+    setState(() {
+      lat = locationData.latitude;
+      lng = locationData.longitude;
+      print('location = $lat,$lng');
+    });
+  }
+
+
   _getShopData(AppDataModel appDataModel) async {
     shopName = appDataModel.shopName;
     shopPhotoUrl = appDataModel.shopPhotoUrl;
@@ -73,12 +98,12 @@ class ShopSetupState extends State<ShopSetupPage> {
     shopTime = appDataModel.shopTime;
     shopStatus = appDataModel.shopStatus;
     getShopDataStatus = true;
-   print('getshop'+shopTime);
+    print('getshop' + shopTime);
     List<String> dateFull = shopTime.split(",");
     for (int i = 0; i < 7; i++) {
       List<String> statusTime = dateFull[i].split("/");
-      (statusTime[0] == "open") ? days[i] = true:days[i] = false;
-      List <String> openClose = statusTime[1].split('-');
+      (statusTime[0] == "open") ? days[i] = true : days[i] = false;
+      List<String> openClose = statusTime[1].split('-');
       open[i] = openClose[0];
       close[i] = openClose[1];
     }
@@ -88,9 +113,11 @@ class ShopSetupState extends State<ShopSetupPage> {
   Widget build(BuildContext context) {
     shopStatus = "1";
     cmdPage = ModalRoute.of(context).settings.arguments;
+    if (lat == null || lng == null) _getLocation();
 
-    if (cmdPage == null && getShopDataStatus == false)
-      _getShopData(context.read<AppDataModel>());
+   if (cmdPage == null && getShopDataStatus == false)
+         _getShopData(context.read<AppDataModel>());
+
 
     print(cmdPage);
     loading = false;
@@ -105,11 +132,45 @@ class ShopSetupState extends State<ShopSetupPage> {
                       leading: IconButton(
                           icon: Icon(
                             Icons.arrow_back_ios,
-                            color: Style().shopPrimaryColor,
+                            color: Style().darkColor,
                           ),
                           onPressed: () {
                             Navigator.pop(context);
-                          }),
+                          }),actions: [ Container(
+
+                child: Container(
+                  margin: EdgeInsets.only(right: 10),
+                  width: 150,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          if ((shopName?.isEmpty ?? true) ||
+                              (shopType?.isEmpty ?? true) ||
+                              (shopPhone?.isEmpty ?? true) ||
+                              (shopAddress?.isEmpty ?? true) ||
+                              (shopLocation?.isEmpty ?? true) ||
+                              (shopTime?.isEmpty ?? true)) {
+                            normalDialog(context, 'ข้อมูลไม่ครบ',
+                                'โปรดกรอกข้อมูลให้ครบทุกช่อง');
+                          } else {
+                            _saveShopData(
+                                context.read<AppDataModel>());
+                          }
+                        },
+                        child: Style().textSizeColor(
+                            'บันทึก', 14, Colors.white),
+                        style: ElevatedButton.styleFrom(
+                            primary: Style().darkColor,
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(5))),
+                      ),
+                    ],
+                  ),
+                ),
+              )],
                     ),
               body: Container(
                 child: ListView(
@@ -151,8 +212,7 @@ class ShopSetupState extends State<ShopSetupPage> {
                                     radius: 38.0,
                                     backgroundColor: Colors.white,
                                     backgroundImage: (file == null)
-                                        ? (appDataModel.shopPhotoUrl?.isEmpty ??
-                                                true)
+                                        ? (shopPhotoUrl?.isEmpty ?? true)
                                             ? AssetImage(
                                                 'assets/images/shop-icon.png')
                                             : NetworkImage(
@@ -172,40 +232,7 @@ class ShopSetupState extends State<ShopSetupPage> {
                         // buildUser(context.read<AppDataModel>()),
                         // buildPhone(context.read<AppDataModel>()),
                         // buildEmail(context.read<AppDataModel>()),
-                        Container(
-                          width: appDataModel.screenW * 0.9,
-                          child: Container(
-                            width: 150,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    if ((shopName?.isEmpty ?? true) ||
-                                        (shopType?.isEmpty ?? true) ||
-                                        (shopPhone?.isEmpty ?? true) ||
-                                        (shopAddress?.isEmpty ?? true) ||
-                                        (shopLocation?.isEmpty ?? true) ||
-                                        (shopTime?.isEmpty ?? true)) {
-                                      normalDialog(context, 'ข้อมูลไม่ครบ',
-                                          'โปรดกรอกข้อมูลให้ครบทุกช่อง');
-                                    } else {
-                                      _saveShopData(
-                                          context.read<AppDataModel>());
-                                    }
-                                  },
-                                  child: Style().textSizeColor(
-                                      'บันทึก', 14, Colors.white),
-                                  style: ElevatedButton.styleFrom(
-                                      primary: Style().shopPrimaryColor,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(5))),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
+
                       ],
                     ),
                   ],
@@ -217,6 +244,7 @@ class ShopSetupState extends State<ShopSetupPage> {
   _saveShopData(AppDataModel appDataModel) async {
     if (cmdPage == "NEW") {
       if (file != null) {
+        await _calTimeSave();
         Random random = Random();
         int i = random.nextInt(100000);
         final _firebaseStorage = FirebaseStorage.instance;
@@ -227,56 +255,53 @@ class ShopSetupState extends State<ShopSetupPage> {
         var downloadUrl = await snapshot.ref.getDownloadURL();
         shopPhotoUrl = downloadUrl;
         print(shopPhotoUrl);
+        if(shopTime?.isEmpty ?? true) shopTime = 'open/8:0-21:20,open/8:00-20:00,open/8:00-20:00,open/8:00-20:00,open/8:00-20:00,open/8:00-20:00,open/8:0-6:45';
         if (shopPhotoUrl != null) {
-          var responseAddShop = await http.post(
-            (Uri.parse(appDataModel.server + '/shops/add')),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-            },
-            body: jsonEncode(<String, String>{
-              "shop_uid": appDataModel.profileUid,
-              "shop_name": shopName,
-              "shop_photo_Url": shopPhotoUrl,
-              "shop_type": shopType,
-              "shop_phone": shopPhone,
-              "shop_address": shopAddress,
-              "shop_location": shopLocation,
-              "shop_time": shopTime,
-              "shop_status": shopStatus
-            }),
-          );
-          print(responseAddShop.body.toString());
-          if (responseAddShop.statusCode == 200) {
-            appDataModel.shopName = shopName;
-            appDataModel.shopPhotoUrl = shopPhotoUrl;
-            appDataModel.shopType = shopType;
-            appDataModel.shopPhone = shopPhone;
-            appDataModel.shopAddress = shopAddress;
-            appDataModel.shopLocation = shopLocation;
-            appDataModel.shopTime = shopTime;
-            appDataModel.shopStatus = shopStatus;
-
+          ShopModel model = ShopModel(
+              shopUid: appDataModel.profileUid,
+              shopName: shopName,
+              shopPhotoUrl: shopPhotoUrl,
+              shopType: shopType,
+              shopPhone: shopPhone,
+              shopAddress: shopAddress,
+              shopLocation: '$lat,$lng',
+              shopTime: shopTime,
+              shopStatus: shopStatus);
+          Map<String, dynamic> data = model.toJson();
+          await FirebaseFirestore.instance
+              .collection('shops')
+              .doc(appDataModel.profileUid)
+              .set(data)
+              .then((value) async {
+            print('addNewUser complete');
             await dialogs.information(
                 context,
                 Style().textSizeColor('สำเร็จ', 14, Style().textColor),
                 Style().textSizeColor(
-                    'ร้านค้าพร้อมใช้งานแล้ว', 12, Style().textColor));
+                    'เปิดร้านค้าเรียบร้อยแล้ว', 12, Style().textColor));
             Navigator.pushNamed(context, '/shop-page');
-          } else {
+          }).catchError((onError) {
             normalDialog(context, 'ผิดพลาด', 'โปรดลองใหม่อีกครั้ง');
-          }
+          });
         }
+      } else {
+        normalDialog(
+            context, 'โปรดใส่รูปภาพหน้าปก', 'โปรดใส่รูปภาพหน้าปกของร้าน');
       }
-      normalDialog(
-          context, 'โปรดใส่รูปภาพหน้าปก', 'โปรดใส่รูปภาพหน้าปกของร้าน');
     } else {
       if (file != null) {
+        await FirebaseStorage.instance
+            .refFromURL(shopPhotoUrl)
+            .delete()
+            .then((value) {
+          print("deleteComplete");
+        });
+
         Random random = Random();
         int i = random.nextInt(100000);
         final _firebaseStorage = FirebaseStorage.instance;
         var snapshot = await _firebaseStorage
             .ref()
-            .child('/shopPhoto/shop$i.jpg')
             .child('/shopPhoto/shop$i.jpg')
             .putFile(file);
         var downloadUrl = await snapshot.ref.getDownloadURL();
@@ -286,43 +311,37 @@ class ShopSetupState extends State<ShopSetupPage> {
 
       await _calTimeSave();
       print(shopTime);
-      var apiUrl = Uri.parse(appDataModel.server + '/shops/update');
-      print('update url = ' + apiUrl.toString());
-      print('shop_uid = ' + appDataModel.profileUid);
-      var responseUpdateShop = await http.put(
-        (apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'shop_uid': appDataModel.profileUid,
-          'shop_name': shopName,
-          'shop_photo_Url': shopPhotoUrl,
-          'shop_type': shopType,
-          'shop_phone': shopPhone,
-          'shop_address': shopAddress,
-          'shop_location': shopLocation,
-          'shop_time': shopTime,
-          'shop_status': shopStatus
-        }),
-      );
-      print(responseUpdateShop.statusCode.toString());
-      if (responseUpdateShop.statusCode == 200) {
-        appDataModel.shopName = shopName;
-        appDataModel.shopPhotoUrl = shopPhotoUrl;
-        appDataModel.shopType = shopType;
-        appDataModel.shopPhone = shopPhone;
-        appDataModel.shopAddress = shopAddress;
-        appDataModel.shopLocation = shopLocation;
-        appDataModel.shopTime = shopTime;
-        appDataModel.shopStatus = shopStatus;
 
-        dialogs.information(
-            context,
-            Style().textSizeColor('สำเร็จ', 16, Style().textColor),
-            Style().textSizeColor(
-                'อัพเดทข้อมูลร้านค้าแล้ว', 14, Style().textColor));
-      }
+      CollectionReference shops =
+          FirebaseFirestore.instance.collection('shops');
+      await shops.doc(appDataModel.profileUid).update({
+        'shop_name': shopName,
+        'shop_photo_Url': shopPhotoUrl,
+        'shop_type': shopType,
+        'shop_phone': shopPhone,
+        'shop_address': shopAddress,
+        'shop_location': '$lat,$lng',
+        'shop_time': shopTime,
+        'shop_status': shopStatus
+      }).then((value) {
+        normalDialog(
+            context, 'บันทึกสำเร็จ', 'ข้อมูลได้ถูกบันทึกเรียบร้อยแล้ว');
+        setState(() {
+          appDataModel.shopName = shopName;
+          appDataModel.shopPhotoUrl = shopPhotoUrl;
+          appDataModel.shopType = shopType;
+          appDataModel.shopPhone = shopPhone;
+          appDataModel.shopAddress = shopAddress;
+          appDataModel.shopLocation = shopLocation;
+          appDataModel.shopTime = shopTime;
+          appDataModel.shopStatus = shopStatus;
+          file = null;
+          loading = false;
+        });
+      }).catchError((error) {
+        print("Failed to update user: $error");
+        normalDialog(context, 'ผิดพลาด', 'โปรดลองใหม่อีกครั้ง');
+      });
     }
   }
 
@@ -358,13 +377,16 @@ class ShopSetupState extends State<ShopSetupPage> {
                 IconButton(
                     icon: Icon(Icons.navigate_next),
                     onPressed: () async {
-                      var shopNewName = await dialogs.inputDialog(
+                      var shopNewNameList = await dialogs.inputDialog(
                           context,
                           Style()
                               .textSizeColor('ชื่อร้าน', 14, Style().textColor),
                           'กรอกชื่อร้าน');
-                      print('shopName ' + shopNewName);
+                      var shopNewName ;
+                      if(shopNewNameList[0] == true)shopNewName = shopNewNameList[1].toString();
+
                       if (shopNewName != null && shopNewName != 'cancel') {
+                        print('shopName ' + shopNewName);
                         setState(() {
                           shopName = shopNewName;
                         });
@@ -394,13 +416,15 @@ class ShopSetupState extends State<ShopSetupPage> {
                 IconButton(
                     icon: Icon(Icons.navigate_next),
                     onPressed: () async {
-                      var ShopTypeNew = await dialogs.inputDialog(
+                      var shopTypeNewList = await dialogs.inputDialog(
                           context,
                           Style().textSizeColor(
                               'ประเถทสินค้า', 14, Style().textColor),
                           'เช่น ตามสั่ง,ยำ,ก๋วยเตียว,เครื่องดื่ม');
-                      print('shopName ' + ShopTypeNew);
+                     var  ShopTypeNew ;
+                     if(shopTypeNewList[0] == true) ShopTypeNew = shopTypeNewList[1];
                       if (ShopTypeNew != null && ShopTypeNew != 'cancel') {
+                        print('shopName ' + ShopTypeNew);
                         setState(() {
                           shopType = ShopTypeNew;
                         });
@@ -455,80 +479,6 @@ class ShopSetupState extends State<ShopSetupPage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Style().textSizeColor('ที่ตั้ง', 12, Style().textColor),
-                    (shopAddress == null)
-                        ? Container()
-                        : Style()
-                            .textSizeColor(shopAddress, 16, Style().textColor)
-                  ],
-                ),
-                IconButton(
-                    icon: Icon(Icons.navigate_next),
-                    onPressed: () async {
-                      var ShopAddressNew = await dialogs.inputDialog(
-                          context,
-                          Style().textSizeColor('ที่ตั้งร้าน *ระบุให้ชัดเจน',
-                              14, Style().textColor),
-                          'เช่น ข้างคิวรถฝั่งขวา,ตรงข้าม ธ.ออมสิน');
-                      print('shopName ' + ShopAddressNew);
-                      if (ShopAddressNew != null &&
-                          ShopAddressNew != 'cancel') {
-                        setState(() {
-                          shopAddress = ShopAddressNew;
-                        });
-                      }
-                    }),
-              ],
-            ),
-            Container(
-                margin: EdgeInsets.all(1),
-                child: Divider(
-                  color: Colors.grey,
-                  height: 0,
-                )),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Style().textSizeColor('Location', 12, Style().textColor),
-                    (shopLocation == null)
-                        ? Container()
-                        : Style()
-                            .textSizeColor(shopLocation, 16, Style().textColor)
-                  ],
-                ),
-                IconButton(
-                    icon: Icon(Icons.navigate_next),
-                    onPressed: () async {
-                      var shopLocationNew = await dialogs.inputDialog(
-                          context,
-                          Style().textSizeColor(
-                              'ระบุ Location ร้าน', 14, Style().textColor),
-                          'ปักหมุด location');
-                      print('shopName ' + shopLocationNew);
-                      if (shopLocationNew != null &&
-                          shopLocationNew != 'cancel') {
-                        setState(() {
-                          shopLocation = shopLocationNew;
-                        });
-                      }
-                    }),
-              ],
-            ),
-            Container(
-                margin: EdgeInsets.all(1),
-                child: Divider(
-                  color: Colors.grey,
-                  height: 0,
-                )),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
                     Style()
                         .textSizeColor('เวลา เปิด-ปิด', 16, Style().textColor),
                   ],
@@ -547,7 +497,92 @@ class ShopSetupState extends State<ShopSetupPage> {
                   color: Colors.grey,
                   height: 0,
                 )),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Style().textSizeColor('ที่ตั้ง', 12, Style().textColor),
+                    (shopAddress == null)
+                        ? Container()
+                        : Style()
+                            .textSizeColor(shopAddress, 16, Style().textColor)
+                  ],
+                ),
+                IconButton(
+                    icon: Icon(Icons.navigate_next),
+                    onPressed: () async {
+                      var ShopAddressNewList = await dialogs.inputDialog(
+                          context,
+                          Style().textSizeColor('ที่ตั้งร้าน *ระบุให้ชัดเจน',
+                              14, Style().textColor),
+                          'เช่น ข้างคิวรถฝั่งขวา,ตรงข้าม ธ.ออมสิน');
+                      var ShopAddressNew;
+                      if(ShopAddressNewList[0] == true)ShopAddressNew = ShopAddressNewList[1];
+                      print('shopName ' + ShopAddressNew);
+                      if (ShopAddressNew != null &&
+                          ShopAddressNew != 'cancel') {
+                        setState(() {
+                          shopAddress = ShopAddressNew;
+                        });
+                      }
+                    }),
+              ],
+            ),
+            Container(
+                margin: EdgeInsets.all(1),
+                child: Divider(
+                  color: Colors.grey,
+                  height: 0,
+                )),
+            Container(
+              margin: EdgeInsets.only(top: 10, bottom: 5),
+              child: Style().textSizeColor(
+                  'ตำแหน่งร้าน', 14, Style().textColor),
+            ),
+            (addressName == null)? Container()  : Container(
+              margin: EdgeInsets.only(left: 20,right: 20,bottom: 5),
+              child: Style().textSizeColor(
+                  addressName, 12, Style().textColor),
+            ),
+            (lat == null || lng == null)
+                ? Center(
+              child: Style().circularProgressIndicator(
+                  Style().darkColor),
+            )
+                : showMap(),
+
           ],
+        ));
+  }
+
+  Set<Marker> youMarker() {
+    return <Marker>[
+      Marker(
+          markerId: MarkerId('youMarker'),
+          position: LatLng(lat, lng),
+          infoWindow:
+          InfoWindow(title: 'ตำแหน่งร้าน', snippet: addressName))
+    ].toSet();
+  }
+
+  Container showMap() {
+    LatLng firstLocation = LatLng(lat, lng);
+    CameraPosition cameraPosition = CameraPosition(
+      target: firstLocation,
+      zoom: 16.0,
+    );
+
+    return Container(
+        margin: EdgeInsets.only(left: 20, right: 20, bottom: 10),
+        height: 200,
+        child: GoogleMap(
+          // myLocationEnabled: true,
+          initialCameraPosition: cameraPosition,
+          mapType: MapType.normal,
+          onMapCreated: (controller) {},
+          markers: youMarker(),
         ));
   }
 
@@ -619,6 +654,8 @@ class ShopSetupState extends State<ShopSetupPage> {
                                           context: context,
                                           fromText: 'เวลาเปิด',
                                           toText: 'เวลาปิด',
+
+
                                           paintingStyle: PaintingStyle.fill,
                                           start: TimeOfDay(
                                               hour: (int.parse(openList[0])),
@@ -627,6 +664,10 @@ class ShopSetupState extends State<ShopSetupPage> {
                                               hour: (int.parse(closeList[0])),
                                               minute:
                                                   (int.parse(closeList[1]))),
+                                              disabledTime: TimeRange(
+                                                  startTime: TimeOfDay(hour: 23, minute: 55),
+                                                  endTime: TimeOfDay(hour: 00, minute: 5)),
+                                              disabledColor: Colors.red.withOpacity(0.5),
                                         );
                                         setState(() {
                                           open[index] =

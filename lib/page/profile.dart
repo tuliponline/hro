@@ -2,16 +2,25 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geocoder/geocoder.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hro/model/AppDataModel.dart';
+import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/dialog.dart';
+import 'package:hro/utility/getAddressName.dart';
+import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/regexText.dart';
 import 'package:hro/utility/style.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,9 +33,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class ProfileState extends State<ProfilePage> {
-
-
-
   var _nameController = TextEditingController();
   var _phoneController = TextEditingController();
   var _emailController = TextEditingController();
@@ -43,6 +49,11 @@ class ProfileState extends State<ProfilePage> {
 
   String photoUrl;
 
+  double lat, lng;
+  String addressName;
+
+  Dialogs dialogs = Dialogs();
+
   _setDataProfile(AppDataModel appDataModel) {
     _nameController.text = appDataModel.profileName;
     _phoneController.text = appDataModel.profilePhone;
@@ -56,8 +67,22 @@ class ProfileState extends State<ProfilePage> {
     loading = false;
   }
 
-  @override
+  Future<Null> findLocation() async {
+    LocationData locationData = await getLocationData();
+    lat = locationData.latitude;
+    lng = locationData.longitude;
+
+    addressName = await getAddressName(lat, lng);
+    print('address = $addressName');
+    setState(() {
+      lat = locationData.latitude;
+      lng = locationData.longitude;
+      print('location = $lat,$lng');
+    });
+  }
+
   Widget build(BuildContext context) {
+    if (lat == null || lng == null) findLocation();
     if (setDataStatus == false) _setDataProfile(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
         builder: (context, appDataModel, child) => Scaffold(
@@ -75,6 +100,38 @@ class ProfileState extends State<ProfilePage> {
                           onPressed: () {
                             Navigator.pop(context);
                           }),
+                      actions: [
+                        Container(
+                          child: Container(
+                            margin: EdgeInsets.only(right: 10),
+                            width: 150,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    (checkEmailRegX &&
+                                            checkNameRegX &&
+                                            checkPhoneRegX)
+                                        ? updateProfile(
+                                            context.read<AppDataModel>())
+                                        : normalDialog(
+                                            context,
+                                            'ข้อมูลไม่ถูกต้อง',
+                                            'โปรดตรวจสอบข้อมูล');
+                                  },
+                                  child: Style().titleH3('บันทึก'),
+                                  style: ElevatedButton.styleFrom(
+                                      primary: Style().primaryColor,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(5))),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      ],
                     ),
               body: (loading == true)
                   ? Style().circularProgressIndicator(Style().darkColor)
@@ -139,43 +196,62 @@ class ProfileState extends State<ProfilePage> {
                               buildPhone(context.read<AppDataModel>()),
                               buildEmail(context.read<AppDataModel>()),
                               Container(
-                                width: appDataModel.screenW * 0.9,
-                                child: Container(
-                                  width: 150,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          (checkEmailRegX &&
-                                                  checkNameRegX &&
-                                                  checkPhoneRegX)
-                                              ?
-                                          updateProfile(
-                                                  context.read<AppDataModel>())
-
-                                              : normalDialog(
-                                                  context,
-                                                  'ข้อมูลไม่ถูกต้อง',
-                                                  'โปรดตรวจสอบข้อมูล');
-                                        },
-                                        child: Style().titleH3('บันทึก'),
-                                        style: ElevatedButton.styleFrom(
-                                            primary: Style().primaryColor,
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(5))),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
+                                margin: EdgeInsets.only(top: 10, bottom: 5),
+                                child: Style().textSizeColor(
+                                    'ตําแหน่งของคุณ', 14, Style().textColor),
+                              ),
+                              (addressName == null)
+                                  ? Container()
+                                  : Container(
+                                      margin: EdgeInsets.only(
+                                          left: 20, right: 20, bottom: 5),
+                                      child: Style().textSizeColor(
+                                          addressName, 12, Style().textColor),
+                                    ),
+                              (lat == null || lng == null)
+                                  ? Center(
+                                      child: Style().circularProgressIndicator(
+                                          Style().darkColor),
+                                    )
+                                  : showMap(),
+                              (lat != null || lng != null)
+                                  ? Container()
+                                  : Container()
                             ],
                           ),
                         ],
                       ),
                     ),
             ));
+  }
+
+  Set<Marker> youMarker() {
+    return <Marker>[
+      Marker(
+          markerId: MarkerId('youMarker'),
+          position: LatLng(lat, lng),
+          infoWindow:
+              InfoWindow(title: 'ตําแหน่งของคุณ', snippet: 'TestDetail'))
+    ].toSet();
+  }
+
+  Container showMap() {
+    LatLng firstLocation = LatLng(lat, lng);
+    CameraPosition cameraPosition = CameraPosition(
+      target: firstLocation,
+      zoom: 16.0,
+    );
+
+    return Container(
+        margin: EdgeInsets.only(left: 20, right: 20, bottom: 10),
+        height: 200,
+        child: GoogleMap(
+          myLocationEnabled: true,
+          initialCameraPosition: cameraPosition,
+          mapType: MapType.normal,
+          onMapCreated: (controller) {},
+          // markers: youMarker(),
+        ));
   }
 
   Container buildUser(AppDataModel appDataModel) {
@@ -323,71 +399,61 @@ class ProfileState extends State<ProfilePage> {
   }
 
   Future<Null> updateProfile(AppDataModel appDataModel) async {
-    setState(() {
-      loading = true;
-    });
-photoUrl = appDataModel.profilePhotoUrl;
-    final FirebaseAuth auth = await FirebaseAuth.instance;
-    final User user = auth.currentUser;
-    final uid = user.uid;
-    // here you write the codes to input the data into firestore
+    var result = await dialogs.confirm(context, "แก้ไขข้อมูล",
+        "บันทึกข้อมูลบัญชี ?", Icon(FontAwesomeIcons.question));
 
-      if (user != null) {
-        if (file != null) {
-          Random random = Random();
-          int i = random.nextInt(100000);
-          final _firebaseStorage = FirebaseStorage.instance;
-          var snapshot = await _firebaseStorage
-              .ref()
-              .child('profile_picture/profile$i.jpg')
-              .putFile(file);
-          var downloadUrl = await snapshot.ref.getDownloadURL();
-          photoUrl = downloadUrl;
-          appDataModel.profilePhotoUrl = photoUrl;
-        }
-        await user
-            .updateProfile(
-                displayName: _nameController.text, photoURL: photoUrl)
-            .then((value2)  async{
-
-          print("CheckDataTest");
-
-          var apiUrl = Uri.parse(appDataModel.server + '/users/update');
-          print('update url = ' + apiUrl.toString());
-          var responseUpdateUser = await http.put(
-            (apiUrl),
-            headers: <String, String>{
-              'Content-Type': 'application/json; charset=UTF-8',
-            },
-            body: jsonEncode(<String, String>{
-              'uid': appDataModel.profileUid,
-              'name': _nameController.text,
-              'phone': _phoneController.text,
-              'email': _emailController.text,
-              'photo_url': photoUrl,
-            }),
-          );
-          if (responseUpdateUser.statusCode == 200){
-            normalDialog(
-                context, 'บันทึกสำเร็จ', 'ข้อมูลได้ถูกบันทึกเรียบร้อยแล้ว');
-            setState(() {
-              appDataModel.profileName = _nameController.text;
-              appDataModel.profilePhone = _phoneController.text;
-              file = null;
-              loading = false;
+    if (result != null && result == true) {
+      photoUrl = appDataModel.profilePhotoUrl;
+      print('photoUrl = ' + photoUrl);
+      if (file != null) {
+        if (photoUrl != null) {
+          if (photoUrl.contains("firebasestorage")) {
+            await FirebaseStorage.instance
+                .refFromURL(photoUrl)
+                .delete()
+                .then((value) {
+              print("deleteComplete");
             });
-          }else{
-            normalDialog(
-                context, 'ผิดพลาด', 'เกิดข้อผิดพลาดโปรดลองใหม่อีกครั้ง');
-            print(responseUpdateUser.body.toString());
-            print(responseUpdateUser.statusCode.toString());
+          } else {
+            print("Not delete");
           }
+        }
 
-
-        });
-      } else {
-        print("non Login");
+        Random random = Random();
+        int i = random.nextInt(100000);
+        final _firebaseStorage = FirebaseStorage.instance;
+        var snapshot = await _firebaseStorage
+            .ref()
+            .child('profile_picture/profile$i.jpg')
+            .putFile(file);
+        var downloadUrl = await snapshot.ref.getDownloadURL();
+        photoUrl = downloadUrl;
+        appDataModel.profilePhotoUrl = photoUrl;
       }
-    ;
+
+      CollectionReference users =
+          FirebaseFirestore.instance.collection('users');
+      await users.doc(appDataModel.profileUid).update({
+        'name': _nameController.text,
+        'phone': _phoneController.text,
+        'email': _emailController.text,
+        'photo_url': photoUrl,
+        'location': '$lat,$lng'
+      }).then((value) {
+        normalDialog(
+            context, 'บันทึกสำเร็จ', 'ข้อมูลได้ถูกบันทึกเรียบร้อยแล้ว');
+        setState(() {
+          appDataModel.profileName = _nameController.text;
+          appDataModel.profilePhone = _phoneController.text;
+          appDataModel.profilePhotoUrl = photoUrl;
+          appDataModel.profileEmail = _emailController.text;
+          file = null;
+          loading = false;
+        });
+      }).catchError((error) {
+        print("Failed to update user: $error");
+        normalDialog(context, 'ผิดพลาด', 'โปรดลองใหม่อีกครั้ง');
+      });
+    }
   }
 }
