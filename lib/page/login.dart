@@ -17,6 +17,7 @@ class LoginPage extends StatefulWidget {
 class LoginState extends State<LoginPage> {
   String user, password;
   bool showPassword = false;
+  var myController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {

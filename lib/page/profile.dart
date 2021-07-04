@@ -156,8 +156,13 @@ class ProfileState extends State<ProfilePage> {
                                         backgroundColor: Style().primaryColor,
                                         child: CircleAvatar(
                                           child: InkWell(
-                                            onTap: () {
-                                              chooseImage(ImageSource.camera);
+                                            onTap: ()  async{
+                                              var result = await dialogs.photoSelect(context);
+                                              if (result == false) {
+                                                chooseImage(ImageSource.camera);
+                                              } else if (result == true) {
+                                                chooseImage(ImageSource.gallery);
+                                              }
                                             },
                                             child: Align(
                                               alignment: Alignment.bottomRight,

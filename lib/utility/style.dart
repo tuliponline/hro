@@ -137,6 +137,7 @@ class Style {
       );
 
   Widget textBlackSize(String string, double size) => Text(
+
         string,
         style: TextStyle(
           fontSize: size,

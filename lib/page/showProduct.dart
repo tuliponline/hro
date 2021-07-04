@@ -1,11 +1,15 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/cartModel.dart';
 import 'package:hro/model/cartSingModel.dart';
 import 'package:hro/model/productModel.dart';
+import 'package:hro/model/shopModel.dart';
+import 'package:hro/utility/checkShopTimeOpen.dart';
+import 'package:hro/utility/checkUserDetail.dart';
 import 'package:hro/utility/style.dart';
 import 'package:provider/provider.dart';
 
@@ -17,20 +21,46 @@ class ShowProductPage extends StatefulWidget {
 }
 
 class ShowProductState extends State<ShowProductPage> {
+  FirebaseFirestore db = FirebaseFirestore.instance;
   ProductModel productModel;
-
   bool getDataStatus = false;
-
   var _comment = TextEditingController();
-
   int pcs = 1;
 
-  _getProductData(AppDataModel appDataModel) {
+  String shopStatus = '1';
+  bool shopOpen = true;
+
+  ShopModel shopModel;
+
+  bool userDetail = false;
+
+  _getProductData(AppDataModel appDataModel) async {
     for (var product in appDataModel.allProductsData) {
+      print('productSelectId= ' + appDataModel.productSelectId);
+      print('productSId= ' + product.productId);
       if (product.productId == appDataModel.productSelectId) {
         productModel = productModelFromJson(jsonEncode(product));
+        print('product URL= ' + productModel.productPhotoUrl);
       }
     }
+
+    await db
+        .collection("shops")
+        .doc(productModel.shopUid)
+        .get()
+        .then((value) async {
+      shopModel = shopModelFromJson(jsonEncode(value.data()));
+      shopStatus = shopModel.shopStatus;
+      await checkShopTimeOpen(shopModel.shopTime)
+          .then((value) => shopOpen = value);
+    });
+
+    print('ShopStatus= ' + shopStatus);
+    print('ShopOpen= ' + shopOpen.toString());
+
+    await checkUserDetail(appDataModel.profileUid).then((value) => userDetail = value);
+    print("userDetail =" + userDetail.toString());
+
     setState(() {
       getDataStatus = true;
     });
@@ -45,6 +75,7 @@ class ShowProductState extends State<ShowProductPage> {
                 backgroundColor: Colors.white,
                 bottomOpacity: 0.0,
                 elevation: 0.0,
+                  title: (shopModel == null)? Text("") : Style().textSizeColor(shopModel.shopName, 16, Style().darkColor),
                 leading: IconButton(
                     icon: Icon(
                       Icons.arrow_back_ios,
@@ -98,19 +129,24 @@ class ShowProductState extends State<ShowProductPage> {
                   ],
                 ),
                 Container(
+
                   margin: EdgeInsets.all(20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Style().textSizeColor(
-                              productModel.productName, 18, Style().textColor),
-                          Style().textSizeColor(
-                              productModel.productDetail, 14, Colors.black87)
-                        ],
+                      Container(
+
+                        width: appDataModel.screenW *0.7,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Style().textSizeColor(
+                                productModel.productName, 18, Style().textColor),
+                            Style().textSizeColor(
+                                productModel.productDetail, 14, Colors.black87)
+                          ],
+                        ),
                       ),
                       Column(
                         children: [
@@ -128,48 +164,65 @@ class ShowProductState extends State<ShowProductPage> {
                       )
                     ],
                   ),
-                ),
-                Container(
+                ),(userDetail == false)? Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Style().textSizeColor(
+                          'ท่านกรอกข้อมูลบัญชีไม่ครบ', 16, Colors.redAccent),
+                    ),
+                  ],
+                ) :
+                (shopStatus == "2" || shopStatus == "3" || shopOpen == false)?   Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Style().textSizeColor(
+                          'ร้านปิด', 16, Colors.redAccent),
+                    ),
+                  ],
+                ): Container(
                   margin: EdgeInsets.all(20),
                   child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Style().textSizeColor(
-                              'ข้อความถึงร้านค้า', 16, Style().textColor),
-                        ],
-                      ),
-                      Container(
-                        margin: EdgeInsets.only(top: 10),
-                        width: appDataModel.screenW * 0.9,
-                        height: 40,
-                        child: TextField(
-                          style: TextStyle(fontSize: 14),
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(5),
-                                  borderSide:
-                                      BorderSide(color: Style().labelColor)),
-                              focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(5),
-                                  borderSide:
-                                      BorderSide(color: Style().labelColor)),
-                              hintText: 'ไม่ระบุก็ได้',
-                              hintStyle: TextStyle(
-                                  fontSize: 10, fontFamily: "prompt")),
-                          controller: _comment
-                         ,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Style().textSizeColor(
+                                    'ข้อความถึงร้านค้า', 16, Style().textColor),
+                              ],
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(top: 10),
+                              width: appDataModel.screenW * 0.9,
+                              height: 40,
+                              child: TextField(
+                                style: TextStyle(fontSize: 14),
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: InputDecoration(
+                                    enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(5),
+                                        borderSide: BorderSide(
+                                            color: Style().labelColor)),
+                                    focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(5),
+                                        borderSide: BorderSide(
+                                            color: Style().labelColor)),
+                                    hintText: 'ไม่ระบุก็ได้',
+                                    hintStyle: TextStyle(
+                                        fontSize: 10, fontFamily: "prompt")),
+                                controller: _comment,
+                              ),
+                            )
+                          ],
                         ),
-                      )
-                    ],
-                  ),
                 )
               ],
             ),
           ),
-          Container(
+          (shopStatus == "2" || shopStatus == "3" || shopOpen == false || userDetail == false)? Container() :  Container(
             padding: EdgeInsets.all(8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -198,21 +251,20 @@ class ShowProductState extends State<ShowProductPage> {
               ],
             ),
           ),
-          Container(
+          (shopStatus == "2" || shopStatus == "3" || shopOpen == false || userDetail == false)? Container() : Container(
             width: appDataModel.screenW * 0.9,
             child: ElevatedButton(
               onPressed: () {
                 _addOrder(context.read<AppDataModel>());
                 appDataModel.allPcs = 0;
-                  appDataModel.allPrice = 0;
-                  for (CartModel orderItem in appDataModel.currentOrder) {
-                    int sumPrice =
-                        int.parse(orderItem.pcs) * int.parse(orderItem.price);
+                appDataModel.allPrice = 0;
+                for (CartModel orderItem in appDataModel.currentOrder) {
+                  int sumPrice =
+                      int.parse(orderItem.pcs) * int.parse(orderItem.price);
 
-                    appDataModel.allPcs += int.parse(orderItem.pcs);
-                    appDataModel.allPrice += sumPrice;
-                  }
-
+                  appDataModel.allPcs += int.parse(orderItem.pcs);
+                  appDataModel.allPrice += sumPrice;
+                }
               },
               child: Style().titleH3('เพิ่มใส่รถเข็น - ' +
                   (int.parse(productModel.productPrice) * pcs).toString() +
@@ -230,46 +282,50 @@ class ShowProductState extends State<ShowProductPage> {
     print('listLength = ' + appDataModel.currentOrder.length.toString());
     int length = appDataModel.currentOrder.length;
 
-    if (length  != 0){
-      bool haveItem =false;
-      for (int i = 0; i < length ; i++)  {
+    if (length != 0) {
+      bool haveItem = false;
+      for (int i = 0; i < length; i++) {
         if (appDataModel.currentOrder[i].productId == productModel.productId) {
-          haveItem =true;
+          haveItem = true;
           print('have');
           int newPcs = int.parse(appDataModel.currentOrder[i].pcs) + pcs;
-          if  (_comment.text?.isEmpty ?? true){
-
-          }else{
+          if (_comment.text?.isEmpty ?? true) {
+          } else {
             appDataModel.currentOrder[i].comment = _comment.text;
           }
           appDataModel.currentOrder[i].pcs = newPcs.toString();
-          print('newPcs ' + jsonEncode(appDataModel.currentOrder[i]).toString());
+          print(
+              'newPcs ' + jsonEncode(appDataModel.currentOrder[i]).toString());
         }
       }
-      if (haveItem == false){
+      if (haveItem == false) {
         print('notHave1');
         CartModel newItem = CartModel(
-            productId: productModel.productId,productName: productModel.productName,
+            productId: productModel.productId,
+            productName: productModel.productName,
             pcs: pcs.toString(),
-            price: productModel.productPrice,comment: _comment.text,time:productModel.productTime );
+            price: productModel.productPrice,
+            comment: _comment.text,
+            time: productModel.productTime);
         var roeData = jsonEncode(newItem);
         print(roeData);
         appDataModel.currentOrder.add(newItem);
-
       }
-
     } else {
       print('notHave');
       CartModel newItem = CartModel(
-          productId: productModel.productId,productName: productModel.productName,
+          productId: productModel.productId,
+          productName: productModel.productName,
           pcs: pcs.toString(),
-          price: productModel.productPrice,comment: _comment.text,time: productModel.productTime);
+          price: productModel.productPrice,
+          comment: _comment.text,
+          time: productModel.productTime);
       var roeData = jsonEncode(newItem);
       print(roeData);
 
       appDataModel.currentOrder.add(newItem);
     }
-     appDataModel.storeSelectId =productModel.shopUid;
-   Navigator.pushNamedAndRemoveUntil(context, '/store-page', (route) => false);
+    appDataModel.storeSelectId = productModel.shopUid;
+    Navigator.pushNamedAndRemoveUntil(context, '/store-page', (route) => false);
   }
 }

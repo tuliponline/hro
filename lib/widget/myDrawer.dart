@@ -14,6 +14,7 @@ import 'package:hro/model/driverModel.dart';
 import 'package:hro/model/orderModel.dart';
 import 'package:hro/model/shopModel.dart';
 import 'package:hro/utility/Dialogs.dart';
+import 'package:hro/utility/checkUserDetail.dart';
 import 'package:hro/utility/snapshot2list.dart';
 import 'package:hro/utility/style.dart';
 import 'package:provider/provider.dart';
@@ -33,10 +34,17 @@ class _MyDrawerState extends State<MyDrawer> {
   FirebaseFirestore db = FirebaseFirestore.instance;
   List<OrderList> orderList;
   bool getData = false;
+  bool userDetail = false;
 
-  _checkOrderShop(AppDataModel appDataModel) {
+  bool customerOpen = false;
+
+  _checkOrderShop(AppDataModel appDataModel) async {
+    await checkUserDetail(appDataModel.profileUid).then((value) {
+      userDetail = value;
+    });
+
     orderShop = 0;
-    db
+    await db
         .collection('orders')
         .where('shopId', isEqualTo: appDataModel.profileUid)
         .get()
@@ -54,9 +62,9 @@ class _MyDrawerState extends State<MyDrawer> {
     });
   }
 
-  _checkOrderDriver(AppDataModel appDataModel) {
+  _checkOrderDriver(AppDataModel appDataModel) async {
     orderDriver = 0;
-    db
+    await db
         .collection('orders')
         .where('driver', isEqualTo: appDataModel.profileUid)
         .get()
@@ -89,229 +97,332 @@ class _MyDrawerState extends State<MyDrawer> {
     if (getData == false) _checkOrderShop(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
         builder: (context, appDataModel, child) => SafeArea(
-              child: Container(
-                child: ListView(
-                  children: [
-                    Container(
-                      margin: EdgeInsets.only(top: 20),
-                      child: Column(
+              child: (orderList == null)
+                  ? Center(
+                      child:
+                          Style().circularProgressIndicator(Style().darkColor),
+                    )
+                  : Container(
+                      child: ListView(
                         children: [
                           Container(
-                            //color: Colors.orange,
-                            margin: EdgeInsets.only(bottom: 5),
-                            child: CircleAvatar(
-                              backgroundColor: Style().primaryColor,
-                              radius: 40,
-                              child: CircleAvatar(
-                                radius: 38,
-                                backgroundColor: Colors.white,
-                                child: (appDataModel.profilePhotoUrl?.isEmpty ??
-                                        true)
-                                    ? Container()
-                                    : CircleAvatar(
-                                        radius: 35,
-                                        backgroundColor: Colors.white,
-                                        backgroundImage: NetworkImage(
-                                            appDataModel.profilePhotoUrl),
-                                      ),
-                              ),
-                            ),
-                          ),
-                          (appDataModel.profileName?.isEmpty ?? true)
-                              ? Container()
-                              : Style().titleH3(appDataModel.profileName),
-                          (appDataModel.profileName?.isEmpty ?? true)
-                              ? Container()
-                              : Style().textDark(appDataModel.profileEmail)
-                        ],
-                      ),
-                    ),
-                    Container(
-                      // color: Colors.grey,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                              child: ListTile(
-                            onTap: () async {
-                              await Navigator.pushNamed(
-                                  context, '/profile-page');
-                              setState(() {});
-                            },
-                            leading: Icon(
-                              FontAwesomeIcons.solidUserCircle,
-                              color: Style().darkColor,
-                              size: 30,
-                            ),
-                            title: Style().textBlack54('บัญชี'),
-                          ))
-                        ],
-                      ),
-                    ),
-                    Container(
-                      // color: Colors.grey,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                              child: ListTile(
-                            onTap: () async {
-                              await Navigator.pushNamed(
-                                  context, '/orderList-page');
-                              setState(() {});
-                            },
-                            leading: Icon(
-                              FontAwesomeIcons.clipboardList,
-                              color: Style().darkColor,
-                              size: 30,
-                            ),
-                            title: Style().textBlack54('รายการ Order'),
-                          ))
-                        ],
-                      ),
-                    ),
-
-                    Container(
-                      // color: Colors.grey,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                              child: ListTile(
-                                  onTap: () {
-                                    _checkHaveShop(
-                                        context.read<AppDataModel>());
-                                  },
-                                  leading: Icon(
-                                    FontAwesomeIcons.store,
-                                    color: Style().shopDarkColor,
-                                    size: 30,
-                                  ),
-                                  title: (orderShop == 0)
-                                      ? Style().textSizeColor(
-                                          'ร้านค้า', 14, Style().shopDarkColor)
-                                      : Row(
-                                          children: [
-                                            Container(
-                                              margin: EdgeInsets.only(right: 5),
-                                              child: Style().textSizeColor(
-                                                  'ร้านค้า',
-                                                  14,
-                                                  Style().shopDarkColor),
-                                            ),
-                                            Badge(
-                                              position: BadgePosition.topEnd(
-                                                  top: 0, end: 3),
-                                              animationDuration:
-                                                  Duration(milliseconds: 300),
-                                              animationType:
-                                                  BadgeAnimationType.slide,
-                                              badgeContent: Text(
-                                                orderShop.toString(),
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 10),
-                                              ),
-                                              // child: IconButton(
-                                              //     icon: Icon(
-                                              //       FontAwesomeIcons.receipt,
-                                              //       color: Style().darkColor,
-                                              //     ),
-                                              //     onPressed: () {
-                                              //       setState(() {
-                                              //         Navigator.pushNamed(context,"/orderList-page");
-                                              //       });
-                                              //     }),
-                                            ),
-                                          ],
-                                        )))
-                        ],
-                      ),
-                    ),
-                    Container(
-                      // color: Colors.grey,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                              child: ListTile(
-                            onTap: () {
-                              _checkHaveDrivers(context.read<AppDataModel>());
-                            },
-                            leading: Icon(
-                              FontAwesomeIcons.motorcycle,
-                              color: Style().drivePrimaryColor,
-                              size: 30,
-                            ),
-                            title: (orderDriver == 0)? Style().textSizeColor(
-                                'Rider', 14, Style().drivePrimaryColor):Row(
+                            margin: EdgeInsets.only(top: 20),
+                            child: Column(
                               children: [
                                 Container(
-                                  margin: EdgeInsets.only(right: 5),
-                                  child: Style().textSizeColor(
-                                      'Rider', 14, Style().drivePrimaryColor),
-                                ),
-                                Badge(
-                                  position: BadgePosition.topEnd(
-                                      top: 0, end: 3),
-                                  animationDuration:
-                                  Duration(milliseconds: 300),
-                                  animationType:
-                                  BadgeAnimationType.slide,
-                                  badgeContent: Text(
-                                    orderDriver.toString(),
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10),
+                                  //color: Colors.orange,
+                                  margin: EdgeInsets.only(bottom: 5),
+                                  child: CircleAvatar(
+                                    backgroundColor: Style().primaryColor,
+                                    radius: 40,
+                                    child: CircleAvatar(
+                                      radius: 38,
+                                      backgroundColor: Colors.white,
+                                      child: (appDataModel
+                                                  .profilePhotoUrl?.isEmpty ??
+                                              true)
+                                          ? Container()
+                                          : CircleAvatar(
+                                              radius: 35,
+                                              backgroundColor: Colors.white,
+                                              backgroundImage: NetworkImage(
+                                                  appDataModel.profilePhotoUrl),
+                                            ),
+                                    ),
                                   ),
-                                  // child: IconButton(
-                                  //     icon: Icon(
-                                  //       FontAwesomeIcons.receipt,
-                                  //       color: Style().darkColor,
-                                  //     ),
-                                  //     onPressed: () {
-                                  //       setState(() {
-                                  //         Navigator.pushNamed(context,"/orderList-page");
-                                  //       });
-                                  //     }),
                                 ),
+                                (appDataModel.profileName?.isEmpty ?? true)
+                                    ? Container()
+                                    : Style().titleH3(appDataModel.profileName),
+                                (appDataModel.profileName?.isEmpty ?? true)
+                                    ? Container()
+                                    : Style()
+                                        .textDark(appDataModel.profileEmail)
                               ],
-                            )
-                          ))
+                            ),
+                          ),
+                              Container(
+                                  // color: Colors.grey,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                          child: ListTile(
+                                              onTap: () async {
+                                                await Navigator.pushNamed(
+                                                    context, '/profile-page');
+                                                setState(() {});
+                                              },
+                                              leading: Icon(
+                                                FontAwesomeIcons.userCircle,
+                                                color: Style().darkColor,
+                                                size: 30,
+                                              ),
+                                              title: (userDetail == true)
+                                                  ? Style().textSizeColor(
+                                                      'บัญชี',
+                                                      14,
+                                                      Style().darkColor)
+                                                  : Row(
+                                                      children: [
+                                                        Container(
+                                                          margin:
+                                                              EdgeInsets.only(
+                                                                  right: 5),
+                                                          child: Style()
+                                                              .textSizeColor(
+                                                                  'บัญชี',
+                                                                  14,
+                                                                  Style()
+                                                                      .darkColor),
+                                                        ),
+                                                        Badge(
+                                                          position:
+                                                              BadgePosition
+                                                                  .topEnd(
+                                                                      top: 0,
+                                                                      end: 3),
+                                                          animationDuration:
+                                                              Duration(
+                                                                  milliseconds:
+                                                                      300),
+                                                          animationType:
+                                                              BadgeAnimationType
+                                                                  .slide,
+                                                          badgeContent: Text(
+                                                            "1",
+                                                            style: TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 10),
+                                                          ),
+                                                          // child: IconButton(
+                                                          //     icon: Icon(
+                                                          //       FontAwesomeIcons.receipt,
+                                                          //       color: Style().darkColor,
+                                                          //     ),
+                                                          //     onPressed: () {
+                                                          //       setState(() {
+                                                          //         Navigator.pushNamed(context,"/orderList-page");
+                                                          //       });
+                                                          //     }),
+                                                        ),
+                                                      ],
+                                                    )))
+                                    ],
+                                  ),
+                                ),
+                          (customerOpen == false)
+                              ? Container()
+                              : Container(
+                                  // color: Colors.grey,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                          child: ListTile(
+                                        onTap: () async {
+                                          await Navigator.pushNamed(
+                                              context, '/orderList-page');
+                                          setState(() {});
+                                        },
+                                        leading: Icon(
+                                          FontAwesomeIcons.clipboardList,
+                                          color: Style().darkColor,
+                                          size: 30,
+                                        ),
+                                        title:
+                                            Style().textBlack54('รายการ Order'),
+                                      ))
+                                    ],
+                                  ),
+                                ),
+                          Container(
+                            // color: Colors.grey,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                    child: ListTile(
+                                        onTap: () {
+                                          _checkHaveShop(
+                                              context.read<AppDataModel>());
+                                        },
+                                        leading: Icon(
+                                          FontAwesomeIcons.store,
+                                          color: Style().shopDarkColor,
+                                          size: 30,
+                                        ),
+                                        title: (orderShop == 0)
+                                            ? Style().textSizeColor('ร้านค้า',
+                                                14, Style().shopDarkColor)
+                                            : Row(
+                                                children: [
+                                                  Container(
+                                                    margin: EdgeInsets.only(
+                                                        right: 5),
+                                                    child: Style()
+                                                        .textSizeColor(
+                                                            'ร้านค้า',
+                                                            14,
+                                                            Style()
+                                                                .shopDarkColor),
+                                                  ),
+                                                  Badge(
+                                                    position:
+                                                        BadgePosition.topEnd(
+                                                            top: 0, end: 3),
+                                                    animationDuration: Duration(
+                                                        milliseconds: 300),
+                                                    animationType:
+                                                        BadgeAnimationType
+                                                            .slide,
+                                                    badgeContent: Text(
+                                                      orderShop.toString(),
+                                                      style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 10),
+                                                    ),
+                                                    // child: IconButton(
+                                                    //     icon: Icon(
+                                                    //       FontAwesomeIcons.receipt,
+                                                    //       color: Style().darkColor,
+                                                    //     ),
+                                                    //     onPressed: () {
+                                                    //       setState(() {
+                                                    //         Navigator.pushNamed(context,"/orderList-page");
+                                                    //       });
+                                                    //     }),
+                                                  ),
+                                                ],
+                                              )))
+                              ],
+                            ),
+                          ),
+                          Container(
+                            // color: Colors.grey,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                    child: ListTile(
+                                        onTap: () {
+                                          _checkHaveDrivers(
+                                              context.read<AppDataModel>());
+                                        },
+                                        leading: Icon(
+                                          FontAwesomeIcons.motorcycle,
+                                          color: Style().drivePrimaryColor,
+                                          size: 30,
+                                        ),
+                                        title: (orderDriver == 0)
+                                            ? Style().textSizeColor('Rider', 14,
+                                                Style().drivePrimaryColor)
+                                            : Row(
+                                                children: [
+                                                  Container(
+                                                    margin: EdgeInsets.only(
+                                                        right: 5),
+                                                    child: Style().textSizeColor(
+                                                        'Rider',
+                                                        14,
+                                                        Style()
+                                                            .drivePrimaryColor),
+                                                  ),
+                                                  Badge(
+                                                    position:
+                                                        BadgePosition.topEnd(
+                                                            top: 0, end: 3),
+                                                    animationDuration: Duration(
+                                                        milliseconds: 300),
+                                                    animationType:
+                                                        BadgeAnimationType
+                                                            .slide,
+                                                    badgeContent: Text(
+                                                      orderDriver.toString(),
+                                                      style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 10),
+                                                    ),
+                                                    // child: IconButton(
+                                                    //     icon: Icon(
+                                                    //       FontAwesomeIcons.receipt,
+                                                    //       color: Style().darkColor,
+                                                    //     ),
+                                                    //     onPressed: () {
+                                                    //       setState(() {
+                                                    //         Navigator.pushNamed(context,"/orderList-page");
+                                                    //       });
+                                                    //     }),
+                                                  ),
+                                                ],
+                                              )))
+                              ],
+                            ),
+                          ),
+                          (appDataModel.profileEmail ==
+                                      "akatdelivery@gmail.com" ||
+                                  appDataModel.profileEmail ==
+                                      "overtechth@gmail.com" ||
+                                  appDataModel.profileEmail ==
+                                      "paystationth@gmail.com")
+                              ? Container(
+                                  // color: Colors.grey,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                          child: ListTile(
+                                        onTap: () async {
+                                          await Navigator.pushNamed(
+                                              context, "/admin-page");
+                                          setState(() {});
+                                        },
+                                        leading: Icon(
+                                          FontAwesomeIcons.user,
+                                          color: Colors.red,
+                                          size: 30,
+                                        ),
+                                        title: Style().textBlack54('Admin'),
+                                      ))
+                                    ],
+                                  ),
+                                )
+                              : Container(),
+                          Container(
+                            // color: Colors.grey,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                TextButton(
+                                    onPressed: () async {
+                                      await Firebase.initializeApp()
+                                          .then((value) async {
+                                        await FirebaseAuth.instance
+                                            .signOut()
+                                            .then((value) async {
+                                          await MyDrawer.facebookSignIn
+                                              .logOut();
+                                          await MyDrawer.googleSignIn.signOut();
+                                          Navigator.pushNamedAndRemoveUntil(
+                                              context,
+                                              '/first-page',
+                                              (route) => false);
+                                        });
+                                      });
+                                    },
+                                    child: Text(
+                                      "ออกจากระบบ",
+                                      style: TextStyle(
+                                          fontFamily: 'Prompt',
+                                          color: Colors.redAccent),
+                                    )),
+                              ],
+                            ),
+                          )
                         ],
                       ),
                     ),
-                    Container(
-                      // color: Colors.grey,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TextButton(
-                              onPressed: () async {
-                                await Firebase.initializeApp()
-                                    .then((value) async {
-                                  await FirebaseAuth.instance
-                                      .signOut()
-                                      .then((value) async {
-                                    await MyDrawer.facebookSignIn.logOut();
-                                    await MyDrawer.googleSignIn.signOut();
-                                    Navigator.pushNamedAndRemoveUntil(context,
-                                        '/first-page', (route) => false);
-                                  });
-                                });
-                              },
-                              child: Text(
-                                "ออกจากระบบ",
-                                style: TextStyle(
-                                    fontFamily: 'Prompt',
-                                    color: Colors.redAccent),
-                              )),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
             ));
   }
 

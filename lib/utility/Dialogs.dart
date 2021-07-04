@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:hro/utility/regexText.dart';
 import 'package:hro/utility/style.dart';
 import 'package:http/http.dart' as http;
@@ -23,7 +26,10 @@ class Dialogs {
               child: ListBody(
                 children: [
                   TextField(
-                    decoration: InputDecoration(hintText: hinText,hintStyle: TextStyle(fontFamily: 'Prompt',fontSize: 14)),
+                    decoration: InputDecoration(
+                        hintText: hinText,
+                        hintStyle:
+                            TextStyle(fontFamily: 'Prompt', fontSize: 14)),
                     controller: _textFildControlor,
                   )
                 ],
@@ -32,12 +38,13 @@ class Dialogs {
             actions: [
               FlatButton(
                   onPressed: () {
-                   Navigator.pop(context,[false,'cancel']);
+                    Navigator.pop(context, [false, 'cancel']);
                   },
-                  child: Text('ยกเลิก')),FlatButton(
+                  child: Text('ยกเลิก')),
+              FlatButton(
                   onPressed: () {
                     if (_textFildControlor.text.length > 0) {
-                      Navigator.pop(context, [true,_textFildControlor.text]);
+                      Navigator.pop(context, [true, _textFildControlor.text]);
                     } else {
                       Toast.show("โปรดกรอกข้อมูล", context,
                           duration: Toast.LENGTH_SHORT, gravity: Toast.CENTER);
@@ -48,6 +55,7 @@ class Dialogs {
           );
         });
   }
+
   inputPhoneDialog(BuildContext context, Text title, String hinText) {
     _textFildControlor.text = "";
     return showDialog(
@@ -60,7 +68,11 @@ class Dialogs {
               child: ListBody(
                 children: [
                   TextField(
-                    decoration: InputDecoration(hintText: hinText,hintStyle: TextStyle(fontFamily: 'Prompt',fontSize: 14)),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        hintText: hinText,
+                        hintStyle:
+                            TextStyle(fontFamily: 'Prompt', fontSize: 14)),
                     controller: _textFildControlor,
                   )
                 ],
@@ -69,9 +81,10 @@ class Dialogs {
             actions: [
               FlatButton(
                   onPressed: () {
-                    Navigator.pop(context,'cancel');
+                    Navigator.pop(context, 'cancel');
                   },
-                  child: Text('ยกเลิก')),FlatButton(
+                  child: Text('ยกเลิก')),
+              FlatButton(
                   onPressed: () {
                     if (phoneRegex(_textFildControlor.text)) {
                       Navigator.pop(context, _textFildControlor.text);
@@ -97,18 +110,18 @@ class Dialogs {
             content: SingleChildScrollView(
               child: ListBody(
                 children: [
-                  RadioListTile(value: monday, groupValue: monday, onChanged: (value){
-
-                  })
+                  RadioListTile(
+                      value: monday, groupValue: monday, onChanged: (value) {})
                 ],
               ),
             ),
             actions: [
               FlatButton(
                   onPressed: () {
-                    Navigator.pop(context,'cancel');
+                    Navigator.pop(context, 'cancel');
                   },
-                  child: Text('ยกเลิก')),FlatButton(
+                  child: Text('ยกเลิก')),
+              FlatButton(
                   onPressed: () {
                     if (phoneRegex(_textFildControlor.text)) {
                       Navigator.pop(context, _textFildControlor.text);
@@ -189,7 +202,10 @@ class Dialogs {
                     child: Padding(
                       padding: const EdgeInsets.only(left: 10),
                       child: ListBody(
-                        children: [Style().textSizeColor(description, 14, Style().textColor),],
+                        children: [
+                          Style().textSizeColor(
+                              description, 14, Style().textColor),
+                        ],
                       ),
                     ),
                   ),
@@ -198,19 +214,20 @@ class Dialogs {
             ),
             actions: [
               FlatButton(
-              onPressed: () => _confirmResult(false, context),
-          child: Style().textSizeColor('ยกเลิก', 14, Colors.blueAccent),),
-
+                onPressed: () => _confirmResult(false, context),
+                child: Style().textSizeColor('ยกเลิก', 14, Colors.blueAccent),
+              ),
               FlatButton(
                 onPressed: () => _confirmResult(true, context),
-                child: Style().textSizeColor('ตกลง', 14, Colors.blueAccent),),
+                child: Style().textSizeColor('ตกลง', 14, Colors.blueAccent),
+              ),
             ],
           );
         });
   }
 
   changOrderStatus(BuildContext context, String title, String description,
-      Widget icon1, Widget icon2, Widget text1, Widget text2,String status) {
+      Widget icon1, Widget icon2, Widget text1, Widget text2, String status) {
     _textFildControlor.text = '';
     return showDialog(
         context: context,
@@ -223,16 +240,27 @@ class Dialogs {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [Column(children: [icon1,text1],),Icon(FontAwesomeIcons.arrowRight),Column(children: [icon2,text2],)],),
+                    children: [
+                      Column(
+                        children: [icon1, text1],
+                      ),
+                      Icon(FontAwesomeIcons.arrowRight),
+                      Column(
+                        children: [icon2, text2],
+                      )
+                    ],
+                  ),
                   // Padding(
                   //   padding: const EdgeInsets.only(top: 10),
                   //   child: Text(description),
                   // ),
                   Padding(
-                    padding: const EdgeInsets.only(top:8),
+                    padding: const EdgeInsets.only(top: 8),
                     child: TextField(
                       controller: _textFildControlor,
-                      decoration: (status == '3')? InputDecoration(hintText: 'Track Number'): InputDecoration(hintText: 'comment'),
+                      decoration: (status == '3')
+                          ? InputDecoration(hintText: 'Track Number')
+                          : InputDecoration(hintText: 'comment'),
                     ),
                   )
                 ],
@@ -240,25 +268,104 @@ class Dialogs {
             ),
             actions: [
               FlatButton(
-                  onPressed: (){
-                    if(status == '3'){
-                      if(_textFildControlor.text.length > 0){
-                        Navigator.pop(context, ['YES', _textFildControlor.text]);
-                      }else{ Toast.show('โปรดกรอก Track Number', context,
-                          duration: Toast.LENGTH_SHORT, gravity: Toast.CENTER); }
-                    }else{
+                  onPressed: () {
+                    if (status == '3') {
+                      if (_textFildControlor.text.length > 0) {
+                        Navigator.pop(
+                            context, ['YES', _textFildControlor.text]);
+                      } else {
+                        Toast.show('โปรดกรอก Track Number', context,
+                            duration: Toast.LENGTH_SHORT,
+                            gravity: Toast.CENTER);
+                      }
+                    } else {
                       Navigator.pop(context, ['YES', _textFildControlor.text]);
                     }
-
                   },
                   child: Text('ตกลง')),
               FlatButton(
-                  onPressed: (){
+                  onPressed: () {
                     Navigator.pop(context, ['NO', _textFildControlor.text]);
                   },
                   child: Text('ยกเลิก'))
             ],
           );
         });
+  }
+
+  photoSelect(BuildContext context) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: SingleChildScrollView(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    child: InkWell(
+                      onTap: () {
+                        print("camera");
+                        _confirmResult(false, context);
+                      },
+                      child: Column(
+                        children: [
+                          (Icon(
+                            FontAwesomeIcons.camera,
+                            color: Colors.grey,
+                            size: 60,
+                          )),
+                          Style().textBlackSize('ถ่ายภาพ', 14)
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 100,
+                    height: 100,
+                    child: InkWell(
+                      onTap: () {
+                        print("gallery");
+                        _confirmResult(true, context);
+                      },
+                      child: Column(
+                        children: [
+                          (Icon(
+                            FontAwesomeIcons.images,
+                            color: Colors.grey,
+                            size: 60,
+                          )),
+                          Style().textBlackSize('อัลบั้ม', 14)
+                        ],
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          );
+        });
+  }
+
+  Future<Null> alertLocationService(BuildContext context) async {
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: Style().textBlackSize("แอฟต้องการเข้าถึงตำแหน่ง", 16),
+              content: SingleChildScrollView(child: ListBody(children: [
+                Style().textBlackSize("โปรดตั้งค่า และ เปิดใช้ตำแหน่ง ", 14),
+              ],),),
+              actions: [
+                TextButton(
+                    onPressed: () async {
+                      await Geolocator.openLocationSettings();
+                      exit(0);
+                    },
+                    child: Style().textSizeColor("OK", 14,Colors.blueAccent))
+              ],
+            ));
   }
 }

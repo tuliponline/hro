@@ -11,6 +11,7 @@ import 'package:hro/model/driverModel.dart';
 import 'package:hro/model/orderModel.dart';
 import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/addLog.dart';
+import 'package:hro/utility/driverStatus.dart';
 import 'package:hro/utility/getTimeNow.dart';
 import 'package:hro/utility/style.dart';
 import 'package:provider/provider.dart';
@@ -31,10 +32,12 @@ class DriversState extends State<DriversPage> {
   bool getDriverData = false;
   String uid;
   List<OrderList> orderList;
+  int driverQueueNow;
 
   FirebaseFirestore db = FirebaseFirestore.instance;
 
   _setData(AppDataModel appDataModel) async {
+
     uid = appDataModel.profileUid;
     await FirebaseFirestore.instance
         .collection('drivers')
@@ -49,6 +52,7 @@ class DriversState extends State<DriversPage> {
       driversModel = driversModelFromJson(jsonEncode(value.data()));
       print('location ' + driversModel.driverStatus);
       await _getOrders(context.read<AppDataModel>());
+      driverQueueNow = await driverQueue(uid);
       (driversModel.driverStatus != '0')
           ? driverStatus = true
           : driverStatus = false;
@@ -67,7 +71,7 @@ class DriversState extends State<DriversPage> {
         .limit(5)
         .get()
         .then((value) {
-          print('valueType=' + value.runtimeType.toString());
+      print('valueType=' + value.runtimeType.toString());
 
       List<DocumentSnapshot> templist;
       List list = new List();
@@ -75,10 +79,10 @@ class DriversState extends State<DriversPage> {
       list = templist.map((DocumentSnapshot docSnapshot) {
         return docSnapshot.data();
       }).toList();
-          print('ListType=' + list.runtimeType.toString());
+      print('ListType=' + list.runtimeType.toString());
 
       var jsonData = jsonEncode(list);
-          print('jsonDataType=' + jsonData.runtimeType.toString());
+      print('jsonDataType=' + jsonData.runtimeType.toString());
       print('OrdersList' + jsonData.toString());
       orderList = orderListFromJson(jsonData);
     });
@@ -93,13 +97,12 @@ class DriversState extends State<DriversPage> {
         // await normalDialog(context, message.notification.title + '',
         //      message.notification.body);
         print(message.notification.title);
-        if (message.notification.title.contains('Rider')){
+        if (message.notification.title.contains('Rider')) {
           print('Shop');
           setState(() {
             getDriverData = false;
           });
         }
-
       }
     });
   }
@@ -117,13 +120,12 @@ class DriversState extends State<DriversPage> {
               appBar: (driversModel == null)
                   ? null
                   : AppBar(
-                      iconTheme:
-                          IconThemeData(color: Style().darkColor),
+                      iconTheme: IconThemeData(color: Style().darkColor),
                       backgroundColor: Colors.white,
                       bottomOpacity: 0.0,
                       elevation: 0.0,
-                      title: Style().textSizeColor(
-                          'Driver', 18, Style().darkColor),
+                      title: Style()
+                          .textSizeColor('Rider', 18, Style().darkColor),
                       actions: [
                         IconButton(
                             icon: Icon(
@@ -134,16 +136,30 @@ class DriversState extends State<DriversPage> {
                             onPressed: () {
                               _setData(context.read<AppDataModel>());
                             }),
-                        IconButton(
-                            icon: Icon(
-                              FontAwesomeIcons.cogs,
-                              color: Style().darkColor,
-                              size: 20,
+                         Container(
+                          child: Container(
+                            margin: EdgeInsets.only(right: 5),
+                            padding: EdgeInsets.all(1),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(context, "/driverSetup-page",
+                                        arguments: 'OLD');
+                                  },
+                                  child: Style().textSizeColor(
+                                      'ข้อมูล Rider', 14, Colors.white),
+                                  style: ElevatedButton.styleFrom(
+                                      primary: Style().darkColor,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(5))),
+                                ),
+                              ],
                             ),
-                            onPressed: () {
-                              Navigator.pushNamed(context, "/driverSetup-page",
-                                  arguments: 'OLD');
-                            }),
+                          ),
+                        ),
                       ],
                     ),
               body: Container(
@@ -165,7 +181,8 @@ class DriversState extends State<DriversPage> {
                                 ),
                                 Container(
                                   child: SingleChildScrollView(
-                                    child: buildOrderList(
+                                    child: (orderList.length == 0) ? Container(child: Center(child: Style().textBlackSize(
+                                        "ไม่มีคิวงาน", 16),),)  :buildOrderList(
                                         context.read<AppDataModel>()),
                                   ),
                                 )
@@ -187,12 +204,17 @@ class DriversState extends State<DriversPage> {
         (driverStatus == true)
             ? Expanded(
                 child: ListTile(
-                  title: Style().textSizeColor(
-                      (driversModel.driverStatus == '1')
-                          ? 'Online'
-                          : 'กำลังดำเนินการ',
-                      16,
-                      Colors.green),
+                  title: (driversModel.driverStatus == '1')
+                      ? Row(
+                          children: [
+                            Style().textSizeColor('Online ', 16, Colors.green),
+                            Style().textSizeColor(
+                                '( คิว ' + driverQueueNow.toString() + " )",
+                                16,
+                                Colors.deepOrangeAccent),
+                          ],
+                        )
+                      : (driversModel.driverStatus == '3')? Style().textSizeColor("รอตรวจสอบ", 16, Colors.orange) : Style().textSizeColor("กำลังออกส่ง", 16, Colors.green),
                   subtitle:
                       Style().textSizeColor('สถานะ ', 14, Style().textColor),
                 ),
@@ -225,6 +247,7 @@ class DriversState extends State<DriversPage> {
                     }
                     setState(() {
                       driverStatus = value;
+                      getDriverData = false;
                     });
                   }
                 : null)
@@ -280,8 +303,13 @@ class DriversState extends State<DriversPage> {
         return InkWell(
           onTap: () async {
             appDataModel.orderIdSelected = e.orderId;
-            if (e.comment != null)  appDataModel.orderAddressComment = e.comment;
-           Navigator.pushNamed(context, "/order2driver-page");
+            if (e.comment != null) appDataModel.orderAddressComment = e.comment;
+            print(e.location);
+            List<String> locationLatLng = e.location.split(',');
+            appDataModel.latOrder = double.parse(locationLatLng[0]);
+            appDataModel.lngOrder = double.parse(locationLatLng[1]);
+
+            Navigator.pushNamed(context, "/order2driver-page");
           },
           child: Container(
             decoration: BoxDecoration(
@@ -331,53 +359,64 @@ class DriversState extends State<DriversPage> {
                             child: Column(
                               children: [
                                 Style().textBlackSize(statusStr, 14),
-                                Row(children: [Container(
-                                  margin: EdgeInsets.only(right: 5),
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      print('cancelOrder By Driver');
-                                      _cancelOrder(context.read<AppDataModel>(),
-                                          e.orderId);
-                                    },
-                                    child: Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                      children: [
-                                        Style().textSizeColor(
-                                            'ยกเลิก', 14, Colors.white),
-
-                                      ],
+                                Row(
+                                  children: [
+                                    Container(
+                                      margin: EdgeInsets.only(right: 5),
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          print('cancelOrder By Driver');
+                                          _cancelOrder(
+                                              context.read<AppDataModel>(),
+                                              e.orderId);
+                                        },
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Style().textSizeColor(
+                                                'ยกเลิก', 14, Colors.white),
+                                          ],
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                            primary: Colors.redAccent,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(5))),
+                                      ),
                                     ),
-                                    style: ElevatedButton.styleFrom(
-                                        primary: Colors.redAccent,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(5))),
-                                  ),
-                                ),(e.status == '2')? Container() :Container(
-                                  margin: EdgeInsets.only(right: 5),
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      print('Order Success');
-                                      _orderSuccess(context.read<AppDataModel>(),
-                                          e.orderId);
-                                    },
-                                    child: Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                      children: [
-                                        Style().textSizeColor(
-                                            'จัดส่งสำเร็จ', 12, Colors.white),
-
-                                      ],
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                        primary: Style().darkColor,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(5))),
-                                  ),
-                                )],)
+                                    (e.status == '2')
+                                        ? Container()
+                                        : Container(
+                                            margin: EdgeInsets.only(right: 5),
+                                            child: ElevatedButton(
+                                              onPressed: () {
+                                                print('Order Success');
+                                                _orderSuccess(
+                                                    context
+                                                        .read<AppDataModel>(),
+                                                    e.orderId);
+                                              },
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Style().textSizeColor(
+                                                      'จัดส่งสำเร็จ',
+                                                      12,
+                                                      Colors.white),
+                                                ],
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                  primary: Style().darkColor,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              5))),
+                                            ),
+                                          )
+                                  ],
+                                )
                               ],
                             ),
                           )
@@ -433,22 +472,23 @@ class DriversState extends State<DriversPage> {
       }).toList(),
     );
   }
-  
-  _orderSuccess(AppDataModel appDataModel,String orderId) async{
-   String finishTime =  await getTimeStringNow();
-    db.collection("orders").doc(orderId).update({'status' : '5','finishTime':finishTime}).then((value) async {
+
+  _orderSuccess(AppDataModel appDataModel, String orderId) async {
+    String finishTime = await getTimeStringNow();
+    db
+        .collection("orders")
+        .doc(orderId)
+        .update({'status': '5', 'finishTime': finishTime}).then((value) async {
       String onlineTime = await getTimeStampNow();
       addLog(orderId, '5', 'driver', uid, '').then((value) {
-        db.collection('drivers').doc(uid).update({'driverStatus': '1','onlineTime': onlineTime}).then((value) {
+        db.collection('drivers').doc(uid).update(
+            {'driverStatus': '1', 'onlineTime': onlineTime}).then((value) {
           setState(() {
             getDriverData = false;
           });
         });
-
       });
-
     });
-
   }
 
   _delivering(AppDataModel appDataModel, String orderId) {
@@ -463,9 +503,9 @@ class DriversState extends State<DriversPage> {
 
   _cancelOrder(AppDataModel appDataModel, String orderId) async {
     String onlineTime = await getTimeStampNow();
-    db.collection('orders').doc(orderId).get().then((value) async{
+    db.collection('orders').doc(orderId).get().then((value) async {
       OrderDetail orderDetail = orderDetailFromJson(jsonEncode(value.data()));
-      if(orderDetail.status == '2' || orderDetail.status == '4' ){
+      if (orderDetail.status == '2' || orderDetail.status == '4') {
         var result = await dialogs.inputDialog(
             context,
             Style().textSizeColor('เหตุผล', 16, Style().textColor),
@@ -476,30 +516,30 @@ class DriversState extends State<DriversPage> {
               .doc(orderId)
               .update({'status': '6'}).then((value) {
             addLog(orderId, '6', 'driver', uid, result[1]).then((value) {
-              db.collection('drivers').doc(uid).update({'driverStatus': '1','onlineTime': onlineTime}).then((value) {
+              db
+                  .collection('drivers')
+                  .doc(uid)
+                  .update({'driverStatus': '1', 'onlineTime': onlineTime}).then(
+                      (value) {
                 setState(() {
                   getDriverData = false;
                 });
               });
-
             });
           });
         }
-      }else{
+      } else {
         await dialogs.information(
             context,
             Style().textSizeColor('ผิดพลาด', 16, Style().textColor),
-            Style().textSizeColor('ไม่สามารถยกเลิกได้โปรดลองใหม่ภายหลัง', 14, Style().textColor));
+            Style().textSizeColor(
+                'ไม่สามารถยกเลิกได้โปรดลองใหม่ภายหลัง', 14, Style().textColor));
 
         setState(() {
           getDriverData = false;
         });
       }
-
-
     });
-
-
 
     // print(result);
   }
@@ -521,7 +561,6 @@ class DriversState extends State<DriversPage> {
           });
         });
       } else {
-
         await dialogs.information(
             context,
             Style().textSizeColor('ผิดพลาด', 16, Style().textColor),

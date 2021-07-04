@@ -19,6 +19,7 @@ class AllShopModel {
     this.shopLocation,
     this.shopTime,
     this.shopStatus,
+    this.token,
   });
 
   String shopUid;
@@ -30,6 +31,7 @@ class AllShopModel {
   String shopLocation;
   String shopTime;
   String shopStatus;
+  String token;
 
   factory AllShopModel.fromJson(Map<String, dynamic> json) => AllShopModel(
     shopUid: json["shop_uid"],
@@ -41,6 +43,7 @@ class AllShopModel {
     shopLocation: json["shop_location"],
     shopTime: json["shop_time"],
     shopStatus: json["shop_status"],
+    token: json["token"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -53,5 +56,6 @@ class AllShopModel {
     "shop_location": shopLocation,
     "shop_time": shopTime,
     "shop_status": shopStatus,
+    "token": token,
   };
 }

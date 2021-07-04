@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/cartModel.dart';
 
 import 'package:hro/model/productsModel.dart';
 import 'package:hro/model/shopModel.dart';
+import 'package:hro/utility/checkShopTimeOpen.dart';
 import 'package:hro/utility/getAddressName.dart';
 import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/style.dart';
@@ -32,6 +34,12 @@ class StoreState extends State<StorePage> {
   String dayInNumber;
   bool shopOpen = false;
   String storeSelectId;
+  int productCount = 0;
+
+  bool listView = true;
+
+  List<ProductsModel> allProductData;
+
   _getShopData(AppDataModel appDataModel) async {
     storeSelectId = appDataModel.storeSelectId;
     //Get location
@@ -47,11 +55,13 @@ class StoreState extends State<StorePage> {
         .then((value) {
       var jsonData = jsonEncode(value.data());
       storeData = (shopModelFromJson(jsonData));
+
       print('storeData = ' + storeData.shopAddress.toString());
     }).catchError((onError) {
       print('onError = ' + onError.toString());
     });
 
+    print("shopOpne = " + shopOpen.toString());
     for (var shopData in appDataModel.allFullShopData) {
       if (shopData.shopUid == appDataModel.storeSelectId) {
         appDataModel.currentShopSelect =
@@ -63,9 +73,10 @@ class StoreState extends State<StorePage> {
       }
     }
   }
+
   _getProduct(AppDataModel appDataModel) async {
     CollectionReference products =
-        FirebaseFirestore.instance.collection('products');
+    FirebaseFirestore.instance.collection('products');
     await products
         .where('product_status', isEqualTo: '1')
         .where('shop_uid', isEqualTo: appDataModel.storeSelectId)
@@ -79,10 +90,20 @@ class StoreState extends State<StorePage> {
       }).toList();
       var jsobData = jsonEncode(list);
       appDataModel.storeProductsData = productsModelFromJson(jsobData);
+      allProductData = appDataModel.storeProductsData;
+      productCount = appDataModel.storeProductsData.length;
     }).catchError((onError) {
       appDataModel.storeProductsData = null;
       print(onError.toString());
     });
+
+    if (storeData.shopStatus == "2" || storeData.shopStatus == "3") {
+      shopOpen = false;
+    } else {
+      await checkShopTimeOpen(storeData.shopTime)
+          .then((value) => shopOpen = value);
+    }
+
     setState(() {
       getDataStatus = true;
     });
@@ -123,15 +144,20 @@ class StoreState extends State<StorePage> {
   Widget build(BuildContext context) {
     if (getDataStatus == false) _getShopData(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
-        builder: (context, appDataModel, child) => Scaffold(
+        builder: (context, appDataModel, child) =>
+            Scaffold(
               body: Container(
-                child:  (storeData == null) ? Style().circularProgressIndicator(Style().darkColor) :SingleChildScrollView(
+                child: (storeData == null)
+                    ? Style().circularProgressIndicator(Style().darkColor)
+                    : SingleChildScrollView(
                   child: buildShowProduct(context.read<AppDataModel>()),
                 ),
               ),
             ));
   }
-  Column buildShowProduct(AppDataModel appDataModel) => Column(
+
+  Column buildShowProduct(AppDataModel appDataModel) =>
+      Column(
         children: [
           Container(
             child: Column(
@@ -152,7 +178,7 @@ class StoreState extends State<StorePage> {
                                   fit: BoxFit.fitWidth,
                                   image: (storeData.shopPhotoUrl == null)
                                       ? AssetImage(
-                                          "assets/images/food_icon.png")
+                                      "assets/images/food_icon.png")
                                       : NetworkImage(storeData.shopPhotoUrl),
                                 ),
                               ),
@@ -166,7 +192,7 @@ class StoreState extends State<StorePage> {
                                   child: Container(
                                     child: Row(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         Container(
                                           margin: EdgeInsets.all(10),
@@ -198,25 +224,25 @@ class StoreState extends State<StorePage> {
                         children: [
                           (shopOpen == true)
                               ? Container(
-                                  margin: EdgeInsets.only(top: 8, left: 8),
-                                  padding: EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Style().darkColor,
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Style()
-                                      .textSizeColor('เปิด', 12, Colors.white),
-                                )
+                            margin: EdgeInsets.only(top: 8, left: 8),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Style().darkColor,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Style()
+                                .textSizeColor('เปิด', 12, Colors.white),
+                          )
                               : Container(
-                                  margin: EdgeInsets.all(8),
-                                  padding: EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.deepOrange,
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Style()
-                                      .textSizeColor('ปิด', 12, Colors.white),
-                                ),
+                            margin: EdgeInsets.all(8),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.deepOrange,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Style()
+                                .textSizeColor('ปิด', 12, Colors.white),
+                          ),
                           Container(
                             margin: EdgeInsets.all(10),
                             child: Column(
@@ -224,13 +250,16 @@ class StoreState extends State<StorePage> {
                               children: [
                                 Row(
                                   children: [
-                                    Style().textSizeColor(
-                                        storeData.shopName +
-                                            ' - ' +
-                                            storeData.shopAddress,
-                                        18,
-                                        Style().textColor)
+                                    Style().textSizeColor(storeData.shopName,
+                                        18, Style().textColor)
                                   ],
+                                ),
+                                Container(
+                                  width: appDataModel.screenW * 0.8,
+                                  child: Style().textSizeColor(
+                                      storeData.shopAddress,
+                                      14,
+                                      Style().textColor),
                                 ),
                                 Container(
                                   child: buildDistance(storeData.shopLocation,
@@ -246,36 +275,41 @@ class StoreState extends State<StorePage> {
                 ),
                 (appDataModel.currentOrder != null)
                     ? (appDataModel.currentOrder.length != 0)
-                        ? Container(
-                            width: appDataModel.screenW * 0.9,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                for (CartModel orderItem
-                                    in appDataModel.currentOrder) {
-                                  print('delete = ' + jsonEncode(orderItem));
-                                }
+                    ? (shopOpen == false || storeData.shopStatus != "1")
+                    ? Container()
+                    : Container(
+                  width: appDataModel.screenW * 0.9,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      for (CartModel orderItem
+                      in appDataModel.currentOrder) {
+                        print(
+                            'delete = ' + jsonEncode(orderItem));
+                      }
 
-                                Navigator.pushNamed(
-                                    context, "/orderDetail-page");
-                              },
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Style().titleH3('รถเข็น - ' +
-                                      appDataModel.allPcs.toString() +
-                                      ' รายการ'),
-                                  Style().titleH3(
-                                      appDataModel.allPrice.toString() + ' ฿'),
-                                ],
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                  primary: Style().primaryColor,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(5))),
-                            ),
-                          )
-                        : Container()
+                      Navigator.pushNamed(
+                          context, "/orderDetail-page");
+                    },
+                    child: Row(
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                      children: [
+                        Style().titleH3('รถเข็น - ' +
+                            appDataModel.allPcs.toString() +
+                            ' รายการ'),
+                        Style().titleH3(
+                            appDataModel.allPrice.toString() +
+                                ' ฿'),
+                      ],
+                    ),
+                    style: ElevatedButton.styleFrom(
+                        primary: Style().primaryColor,
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                            BorderRadius.circular(5))),
+                  ),
+                )
+                    : Container()
                     : Container(),
                 Container(
                   color: Colors.white,
@@ -284,15 +318,28 @@ class StoreState extends State<StorePage> {
                   child: Column(
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Style().textSizeColor(
-                              'รายการ เมนู', 16, Style().textColor)
+                              'สินค้า ' + productCount.toString() + " รายการ",
+                              16,
+                              Style().textColor),
+                          (listView == true)
+                              ? IconButton(
+                            onPressed: () => _changeView(),
+                            icon: Icon(FontAwesomeIcons.bars),
+                          )
+                              : IconButton(
+                              onPressed: () => _changeView(),
+                              icon: Icon(FontAwesomeIcons.list))
                         ],
                       ),
                       Container(
                         margin: EdgeInsets.only(top: 10),
                         child: SingleChildScrollView(
-                          child: _setProduct(context.read<AppDataModel>()),
+                          child: (listView == true)
+                              ? _setProduct(context.read<AppDataModel>())
+                              : _buildProductBars(context.read<AppDataModel>()),
                         ),
                       )
                     ],
@@ -326,76 +373,172 @@ class StoreState extends State<StorePage> {
   _setProduct(AppDataModel appDataModel) {
     return (appDataModel.allShopData != null)
         ? Column(
+      children: [
+        for (int i = 0; i < appDataModel.storeProductsData.length; i++)
+          Row(
             children: [
-              for (int i = 0; i < appDataModel.storeProductsData.length; i++)
-                Row(
-                  children: [
-                    InkWell(
-                      onTap: () async {
-                        appDataModel.productSelectId =
-                            appDataModel.storeProductsData[i].productId;
-                        await Navigator.pushNamed(context, "/showProduct-page");
-                        setState(() {});
-                      },
-                      child: Container(
-                        margin: EdgeInsets.only(left: 10, bottom: 8),
-                        height: 100,
+              InkWell(
+                onTap: () async {
+                  appDataModel.productSelectId =
+                      appDataModel.storeProductsData[i].productId;
+                  await Navigator.pushNamed(context, "/showProduct-page");
+                  setState(() {});
+                },
+                child: Container(
+                  margin: EdgeInsets.only(left: 10, bottom: 8),
+                  height: 100,
 
-                        //color: Colors.green,
-                        child: Row(
-                          children: [
-                            Container(
-                              height: 100,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(5),
-                                color: Colors.white,
-                                image: DecorationImage(
-                                  fit: BoxFit.fill,
-                                  image: NetworkImage(appDataModel
-                                      .storeProductsData[i].productPhotoUrl),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Style().textBlackSize(
-                                      appDataModel
-                                          .storeProductsData[i].productName,
-                                      14),
-                                  Row(
-                                    children: [
-                                      Style().textBlackSize(
-                                          appDataModel.storeProductsData[i]
-                                              .productDetail,
-                                          12),
-                                    ],
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Row(
-                                      children: [
-                                        Style().textDark(appDataModel
-                                                .storeProductsData[i]
-                                                .productPrice +
-                                            ' ฿')
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          ],
+                  //color: Colors.green,
+                  child: Row(
+                    children: [
+                      Container(
+                        height: 100,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5),
+                          color: Colors.white,
+                          // image: DecorationImage(
+                          //   fit: BoxFit.fill,
+                          //   image: NetworkImage(appDataModel
+                          //       .storeProductsData[i].productPhotoUrl),
+                          // ),
+                        ), child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5.0),
+                        child: FadeInImage.assetNetwork(
+                          fit: BoxFit.fitHeight,
+                          placeholder: 'assets/images/loading.gif',
+                          image: appDataModel
+                              .storeProductsData[i].productPhotoUrl,
                         ),
                       ),
-                    ),
-                  ],
-                )
+                      ),
+                      Container(
+                        width: appDataModel.screenW * 0.65,
+
+                        padding: EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Style().textBlackSize(
+                                appDataModel
+                                    .storeProductsData[i].productName,
+                                14),
+                            Row(
+                              children: [
+                                Style().textBlackSize(
+                                    appDataModel.storeProductsData[i]
+                                        .productDetail,
+                                    12),
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Row(
+                                children: [
+                                  Style().textDark(appDataModel
+                                      .storeProductsData[i]
+                                      .productPrice +
+                                      ' ฿')
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
             ],
           )
+      ],
+    )
         : Container();
+  }
+
+  _buildProductBars(AppDataModel appDataModel) {
+    return Container(
+      // margin: EdgeInsets.all(8),
+      child: (allProductData == null)
+          ? Style().circularProgressIndicator(Style().darkColor)
+          : Column(
+        children: allProductData.map((e) {
+          int i = allProductData.indexOf(e);
+
+          return Container(
+            width: appDataModel.screenW,
+            color: Colors.white,
+            child: Container(
+
+                margin: EdgeInsets.only(top: 5),
+                child: InkWell(
+
+                  onTap: () async {
+                    appDataModel.productSelectId =
+                        appDataModel.storeProductsData[i].productId;
+                    await Navigator.pushNamed(context, "/showProduct-page");
+                    setState(() {});
+                  }, child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          margin: EdgeInsets.only(
+                            left: 10,
+                          ),
+                          height: 40,
+                          width: 40,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5),
+                            color: Colors.white,
+                            // image: DecorationImage(
+                            //   fit: BoxFit.fitHeight,
+                            //   image: (e.productPhotoUrl?.isEmpty ?? true)
+                            //       ? AssetImage('assets/images/shop-icon.png')
+                            //       : NetworkImage(e.productPhotoUrl),
+                            // ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(5.0),
+                            child: FadeInImage.assetNetwork(
+                              fit: BoxFit.fitHeight,
+                              placeholder: 'assets/images/loading.gif',
+                              image: e.productPhotoUrl,
+                            ),
+                          ),
+                        ),
+                        Container(
+
+                            width: appDataModel.screenW * 0.6,
+                            margin: EdgeInsets.only(left: 10),
+                            child:
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Style().textBlackSize(e.productName, 14),
+                                Style().textBlackSize(e.productDetail, 10),
+                              ],
+                            )
+
+                        )
+                      ],
+                    ),
+                    Container(
+
+                      child: Style().textSizeColor(
+                          e.productPrice + " ฿", 14, Style().darkColor),
+                    )
+                  ],
+                ),)
+            ),);
+        }).toList(),
+      ),
+    );
+  }
+
+  _changeView() {
+    (listView == true) ? listView = false : listView = true;
+    setState(() {});
   }
 }

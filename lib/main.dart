@@ -1,7 +1,11 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:hro/page/addProduct.dart';
+import 'package:hro/page/adminPage.dart';
+import 'package:hro/page/allProducts.dart';
 import 'package:hro/page/driverSetup.dart';
 import 'package:hro/page/drivers.dart';
+import 'package:hro/page/editProduct.dart';
 import 'package:hro/page/frist.dart';
 import 'package:hro/page/home.dart';
 import 'package:hro/page/login.dart';
@@ -55,7 +59,7 @@ class MyApp extends StatelessWidget {
       create: (_) => AppDataModel(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'เฮาะ',
+        title: 'เฮาะ อากาศเดลิเวอรี่',
         routes: {
           '/register-page': (context) => RegisterPage(),
           '/login-page': (context) => LoginPage(),
@@ -75,10 +79,10 @@ class MyApp extends StatelessWidget {
           "/orderList-page": (context) => OrderListPage(),
           "/orderShow-page": (context) => OrderShowPage(),
           "/order2driver-page": (context) => Order2DriverPage(),
-
-
-
-
+          "/allProduct-page": (context) => AllProductsPage(),
+          "/admin-page": (context) => AdminPage(),
+          "/addProduct-page": (context) => AddProductPage(),
+          "/editProduct-page": (context) => EditProductPage(),
 
 
 

@@ -15,6 +15,7 @@ import 'package:hro/utility/dialog.dart';
 import 'package:hro/utility/getAddressName.dart';
 import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/getTimeNow.dart';
+import 'package:hro/utility/notifySend.dart';
 import 'package:hro/utility/style.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:location/location.dart';
@@ -166,8 +167,13 @@ class DriverSetupState extends State<DriverSetupPage> {
                                             Style().drivePrimaryColor,
                                         child: CircleAvatar(
                                           child: InkWell(
-                                            onTap: () {
-                                              chooseImage(ImageSource.gallery);
+                                            onTap: () async {
+                                              var result = await dialogs.photoSelect(context);
+                                              if (result == false) {
+                                                chooseImage(ImageSource.camera);
+                                              } else if (result == true) {
+                                                chooseImage(ImageSource.gallery);
+                                              }
                                             },
                                             child: Align(
                                               alignment: Alignment.bottomRight,
@@ -228,7 +234,7 @@ class DriverSetupState extends State<DriverSetupPage> {
             driverPhone: phone,
             driverAddress: address,
             driverLocation: '$lat,$lng',
-            driverStatus: '0',
+            driverStatus: '3',
             driverPhotoUrl: photoUrl,
             onlineTime: onlineTime,
           );
@@ -239,6 +245,7 @@ class DriverSetupState extends State<DriverSetupPage> {
               .set(data)
               .then((value) async {
             print('addNewDriver complete');
+            await notifySend(appDataModel.notifyServer, appDataModel.adminToken, "Riderใหม่", "Rider " + name + " รอยืนยัน");
             await dialogs.information(
                 context,
                 Style().textSizeColor('สำเร็จ', 14, Style().textColor),

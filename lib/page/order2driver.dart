@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/orderModel.dart';
 import 'package:hro/model/shopModel.dart';
@@ -32,6 +33,7 @@ class Order2DriverState extends State<Order2DriverPage> {
   double shopLat, shopLng, customerLat, customerLng;
 
   bool showAddress = false;
+  String shopName,customerName,shopPhone,customerPhone;
 
   _getData(AppDataModel appDataModel) async {
     orderIdSelect = appDataModel.orderIdSelected;
@@ -51,7 +53,10 @@ class Order2DriverState extends State<Order2DriverPage> {
             .doc(orderDetail.shopId)
             .get()
             .then((shopValue) async {
+
           ShopModel shopModel = shopModelFromJson(jsonEncode(shopValue.data()));
+          shopName = shopModel.shopName;
+          shopPhone = shopModel.shopPhone;
           List<String> locationLatLng = shopModel.shopLocation.split(',');
           shopLat = double.parse(locationLatLng[0]);
           shopLng = double.parse(locationLatLng[1]);
@@ -65,9 +70,16 @@ class Order2DriverState extends State<Order2DriverPage> {
             .get()
             .then((userValue) async {
           UserModel userModel = userModelFromJson(jsonEncode(userValue.data()));
+          customerName = userModel.name;
+          customerPhone = userModel.phone;
           List<String> locationLatLng = userModel.location.split(',');
-          customerLat = double.parse(locationLatLng[0]);
-          customerLng = double.parse(locationLatLng[1]);
+          // customerLat = double.parse(locationLatLng[0]);
+          // customerLng = double.parse(locationLatLng[1]);
+          customerLat = appDataModel.latOrder;
+          customerLng = appDataModel.lngOrder;
+
+
+
           customerAddress = await getAddressName(customerLat, customerLng);
           print('CustomerAddress = ' + customerAddress);
           setState(() {
@@ -252,7 +264,7 @@ class Order2DriverState extends State<Order2DriverPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Style().textSizeColor('ร้านค้า', 14, Style().textColor),
+          Style().textSizeColor('ร้านค้า : ' + shopName + " โทร" + shopPhone, 14, Style().textColor),
           Row(
             children: [
               IconButton(
@@ -272,12 +284,18 @@ class Order2DriverState extends State<Order2DriverPage> {
               // IconButton(icon: Icon(Icons.navigate_next), onPressed: () {})
             ],
           ),
+          (shopLat == null || shopLng == null)
+              ? Center(
+            child: Style().circularProgressIndicator(Style().darkColor),
+          )
+              : showMapShop(shopLat,shopLng,shopName),
         ],
       ),
     );
   }
 
   Container buildCustomerAddress(AppDataModel appDataModel) {
+
     return Container(
       padding: EdgeInsets.all(10),
       margin: EdgeInsets.only(top: 3),
@@ -285,7 +303,7 @@ class Order2DriverState extends State<Order2DriverPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Style().textSizeColor('ลูกค้า', 14, Style().textColor),
+          Style().textSizeColor('ลูกค้า : ' + customerName + " โทร" + customerPhone, 14, Style().textColor),
           Row(
             children: [
               IconButton(
@@ -305,9 +323,42 @@ class Order2DriverState extends State<Order2DriverPage> {
               )),
               // IconButton(icon: Icon(Icons.navigate_next), onPressed: () {})
             ],
-          ),
+          ), (customerLat == null )
+              ? Center(
+            child: Style().circularProgressIndicator(Style().darkColor),
+          )
+              : showMapShop(customerLat,customerLng,customerName),
         ],
       ),
     );
   }
+
+  Container showMapShop(double lat,double lng,String name) {
+    print("shopLng" + shopLng.toString());
+    LatLng firstLocation = LatLng(lat, lng);
+    CameraPosition cameraPosition = CameraPosition(
+      target: firstLocation,
+      zoom: 16.0,
+    );
+
+    return Container(
+        margin: EdgeInsets.only(left: 20, right: 20, bottom: 10),
+        height: 200,
+        child: GoogleMap(
+          // myLocationEnabled: true,
+          initialCameraPosition: cameraPosition,
+          mapType: MapType.normal,
+          onMapCreated: (controller) {},
+          markers: shopMarker(lat,lng,name),
+        ));
+  }
+  Set<Marker> shopMarker(double lat,double lng,String name) {
+    return <Marker>[
+      Marker(
+          markerId: MarkerId('youMarker'),
+          position: LatLng(lat, lng),
+          infoWindow: InfoWindow(title: 'ตำแหน่ง', snippet: name))
+    ].toSet();
+  }
+
 }

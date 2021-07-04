@@ -4,10 +4,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hro/model/AppDataModel.dart';
+import 'package:hro/model/appStatusModel.dart';
 import 'package:hro/model/cartModel.dart';
 import 'package:hro/model/driverModel.dart';
 import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/addLog.dart';
+import 'package:hro/utility/checkDriverOnline.dart';
 import 'package:hro/utility/getAddressName.dart';
 import 'package:hro/utility/snapshot2list.dart';
 import 'package:hro/utility/style.dart';
@@ -34,30 +36,53 @@ class OrderDetailState extends State<OrderDetailPage> {
 
   int riderOnline = 0;
   bool checkRiderOnline = false;
-
   List<DriversListModel> driverListModel;
 
-  _getRiderOnline() {
-    riderOnline = 0;
-    FirebaseFirestore.instance
-        .collection('drivers')
-        .where('driverStatus', isEqualTo: '1')
+  AppStatusModel appStatusModel;
+  bool customerOpen = false;
+  String dateOpen = '';
+
+  _getRiderOnline(AppDataModel appDataModel) async {
+    await FirebaseFirestore.instance
+        .collection('appstatus')
+        .doc('001')
         .get()
         .then((value) async {
-      var jsonData = await setList2Json(value);
-      if (jsonData == "[]") {
-        riderOnline = 0;
-      } else {
-        print('drivers data = ' + jsonData);
-        driverListModel = driversListModelFromJson(jsonData);
+      appStatusModel = appStatusModelFromJson(jsonEncode(value.data()));
+      print("date Open = " + appStatusModel.dateopen);
+      DateTime dateOpenRow = DateTime.parse(appStatusModel.dateopen);
+      dateOpen = dateOpenRow.day.toString() +
+          "/" +
+          dateOpenRow.month.toString() +
+          "/" +
+          dateOpenRow.year.toString();
 
-        driverListModel.forEach((e) {
-          riderOnline += 1;
-        });
-      }
+      DateTime dateRow = DateTime.parse(appStatusModel.customerOpen);
+      var now =   DateTime.now();
+      var expirationDate =  DateTime(dateRow.year, dateRow.month, dateRow.day);
+       bool customerOpen;
+       customerOpen =  expirationDate.isBefore(now);
 
-      setState(() {
-        checkRiderOnline = true;
+      print("customerOpen = " + customerOpen.toString());
+
+      riderOnline = 0;
+      await FirebaseFirestore.instance
+          .collection('drivers')
+          .where('driverStatus', isEqualTo: '1')
+          .get()
+          .then((value) async {
+        var jsonData = await setList2Json(value);
+        if (jsonData == "[]") {
+          riderOnline = 0;
+        } else {
+          print('drivers data = ' + jsonData);
+          driverListModel = driversListModelFromJson(jsonData);
+
+          driverListModel.forEach((e) {
+            riderOnline += 1;
+          });
+        }
+        _calData(context.read<AppDataModel>());
       });
     });
   }
@@ -79,13 +104,15 @@ class OrderDetailState extends State<OrderDetailPage> {
       addCost = pcs * 2;
       costDelivery = 20 + addCost;
     }
-    setState(() {});
+    setState(() {
+      checkRiderOnline = true;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
- if (checkRiderOnline == false) _getRiderOnline();
-    if (addressName == null) _calData(context.read<AppDataModel>());
+    if (checkRiderOnline == false)
+      _getRiderOnline(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
         builder: (context, appDataModel, child) => Scaffold(
               appBar: AppBar(
@@ -102,53 +129,93 @@ class OrderDetailState extends State<OrderDetailPage> {
                     }),
               ),
               body: Container(
-                child: (addressName == null)? Style().circularProgressIndicator(Style().darkColor) :SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      buildAddressDetail(appDataModel),
-                      buildOrderDetail(context.read<AppDataModel>()),
-                      Container(
-                        width: appDataModel.screenW * 0.9,
-                        child: (appDataModel.shopOpen == true)
-                            ? (riderOnline == 0)
-                                ? ElevatedButton(
-                                    onPressed: () {},
-                                    child:
-                                        Style().titleH3('ไม่มี Rider Online'),
-                                    style: ElevatedButton.styleFrom(
-                                        primary: Colors.grey,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(5))),
-                                  )
-                                : ElevatedButton(
-                                    onPressed: () {
-                                      _addOrder(context.read<AppDataModel>());
-                                      //_getOrder(context.read<AppDataModel>());
-                                    },
-                                    child: Style().titleH3('สั่งซื้อ ' +
-                                        (amount + costDelivery).toString() +
-                                        ' ฿'),
-                                    style: ElevatedButton.styleFrom(
-                                        primary: Style().primaryColor,
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(5))),
-                                  )
-                            : ElevatedButton(
-                                onPressed: () {},
-                                child: Style()
-                                    .titleH3('ร้านปิด ไม่สามารถสั่งอาหารได้'),
-                                style: ElevatedButton.styleFrom(
-                                    primary: Colors.grey,
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(5))),
-                              ),
+                child: (addressName == null)
+                    ? Style().circularProgressIndicator(Style().darkColor)
+                    : SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            buildAddressDetail(appDataModel),
+                            buildOrderDetail(context.read<AppDataModel>()),
+                            Container(
+                              width: appDataModel.screenW * 0.9,
+                              child: (customerOpen == false)
+                                  ? ElevatedButton(
+                                      onPressed: () async {
+                                        await checkDriverOnlineFunction()
+                                            .then((value) {
+                                          print(value);
+                                        });
+                                      },
+                                      child: Style().titleH3(
+                                          'เปิดบริการวันที่ ' + dateOpen),
+                                      style: ElevatedButton.styleFrom(
+                                          primary: Colors.grey,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(5))),
+                                    )
+                                  : (appDataModel.shopOpen == true)
+                                      ? (riderOnline == 0)
+                                          ? ElevatedButton(
+                                              onPressed: () {
+                                              },
+                                              child: Style().titleH3(
+                                                  'ไม่มี Rider Online'),
+                                              style: ElevatedButton.styleFrom(
+                                                  primary: Colors.grey,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              5))),
+                                            )
+                                          : ElevatedButton(
+                                              onPressed: () async {
+                                                await checkDriverOnlineFunction()
+                                                    .then((value) {
+                                                  if (value == true) {
+                                                    _addOrder(context
+                                                        .read<AppDataModel>());
+                                                  } else {
+                                                    dialogs.information(
+                                                        context,
+                                                        Style().textBlackSize(
+                                                            "ไม่มี Rider Online",
+                                                            16),
+                                                        Style().textBlackSize(
+                                                            "โปรดสั่งใหม่ภายหลัง",
+                                                            16));
+                                                  }
+                                                });
+
+                                                //_getOrder(context.read<AppDataModel>());
+                                              },
+                                              child: Style().titleH3(
+                                                  'สั่งซื้อ ' +
+                                                      (amount + costDelivery)
+                                                          .toString() +
+                                                      ' ฿'),
+                                              style: ElevatedButton.styleFrom(
+                                                  primary: Style().primaryColor,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              5))),
+                                            )
+                                      : ElevatedButton(
+                                          onPressed: () {},
+                                          child: Style().titleH3(
+                                              'ร้านปิด ไม่สามารถสั่งอาหารได้'),
+                                          style: ElevatedButton.styleFrom(
+                                              primary: Colors.grey,
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          5))),
+                                        ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
               ),
             ));
   }

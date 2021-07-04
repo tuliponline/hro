@@ -24,6 +24,6 @@ class _SplashPageState extends State<SplashPage> {
         fontSize: 30.0,color: Style().darkColor,fontFamily: "Prompt",
       ),
       backgroundColor: Colors.white,
-    );;
+    );
   }
 }

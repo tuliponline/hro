@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "167777517376-0pa3ofk3b37ehl81mq9t0gv3qs6mgr44.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "hroth.hro",
+            "certificate_hash": "42ef464bd2d98c6315cf68ca16ccad42974be11c"
+          }
+        },
+        {
+          "client_id": "167777517376-2h0p8d5531brdmaqoh9uhb1bvd6luiur.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "hroth.hro",
+            "certificate_hash": "268ca9a40da6d0869592bdfd93f8ad5d2211ef4b"
+          }
+        },
+        {
           "client_id": "167777517376-ld9c3ta0asl1ju79f8hqa2694bbj6j0o.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
