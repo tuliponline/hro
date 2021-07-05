@@ -28,9 +28,6 @@ class Style {
   Color driveLightColor = Color(0xffffbb93);
   Color driveDarkColor = Color(0xffc75b39);
 
-
-
-
   Widget showLogo() => Image.asset('assets/images/hroLogo.png');
 
   Widget titleH0(String string) => Text(
@@ -50,6 +47,19 @@ class Style {
   Widget titleH1(String string) => Text(
         string,
         style: TextStyle(fontSize: 30, fontFamily: 'Prompt', color: textColor),
+      );
+
+  Widget textFlexibleBackSize(String string, int maxLines, double size) => Row(
+        children: [
+          Flexible(
+            child: Text(string,
+                maxLines: maxLines,
+                softWrap: true,
+                overflow: TextOverflow.fade,
+                style: TextStyle(
+                    fontSize: size, fontFamily: 'Prompt', color: textColor)),
+          ),
+        ],
       );
 
   Widget titleH2(String string) => Text(
@@ -137,7 +147,6 @@ class Style {
       );
 
   Widget textBlackSize(String string, double size) => Text(
-
         string,
         style: TextStyle(
           fontSize: size,
@@ -159,7 +168,10 @@ class Style {
         overflow: TextOverflow.ellipsis,
       );
 
-  Widget circularProgressIndicator (Color color) => Center(child: CircularProgressIndicator(valueColor:AlwaysStoppedAnimation<Color>(color)),);
+  Widget circularProgressIndicator(Color color) => Center(
+        child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(color)),
+      );
 
   Style();
 }

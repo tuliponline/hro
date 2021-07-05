@@ -8,6 +8,7 @@ import 'package:hro/page/drivers.dart';
 import 'package:hro/page/editProduct.dart';
 import 'package:hro/page/frist.dart';
 import 'package:hro/page/home.dart';
+import 'package:hro/page/loadmare.dart';
 import 'package:hro/page/login.dart';
 import 'package:hro/page/menu.dart';
 import 'package:hro/page/order2driver.dart';
@@ -22,6 +23,7 @@ import 'package:hro/page/showProduct.dart';
 import 'package:hro/page/splash.dart';
 import 'package:hro/page/store.dart';
 import 'package:hro/page/testGps.dart';
+import 'package:loadmore/loadmore.dart';
 import 'package:provider/provider.dart';
 import 'model/AppDataModel.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -83,6 +85,7 @@ class MyApp extends StatelessWidget {
           "/admin-page": (context) => AdminPage(),
           "/addProduct-page": (context) => AddProductPage(),
           "/editProduct-page": (context) => EditProductPage(),
+          "/loadMore-page": (context) => LoadMorePage(),
 
 
 

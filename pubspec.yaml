@@ -52,6 +52,7 @@ dependencies:
   location_permissions: ^4.0.0
   anim_search_bar: ^2.0.2
   focused_menu: ^1.0.5
+  loadmore: ^2.0.1
 
 
 
@@ -94,6 +95,10 @@ flutter:
     - assets/images/food_icon.png
     - assets/images/map.png
     - assets/images/loading.gif
+    - assets/images/foodIcon.png
+    - assets/images/maidLogo.png
+    - assets/images/serviceIcon.png
+    - assets/images/taxiIcon.png
 
 
 
