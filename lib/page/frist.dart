@@ -51,6 +51,8 @@ class FirstState extends State<FirstPage> {
 
   bool loginIn = false;
 
+  double distanceLimit = 2.0;
+
   Future<Null> _getLocation(AppDataModel appDataModel) async {
     if (Foundation.kDebugMode) {
       print("App in debug mode");
@@ -66,12 +68,15 @@ class FirstState extends State<FirstPage> {
     distanceString = distanceFormat.format(distance);
     print('ระยะ = $distanceString');
     checkLocation = true;
-    if (distance > 2.0) {
+    if (distance > distanceLimit) {
       inService = false;
     } else {
       inService = true;
     }
-    print(inService);
+    setState(() {
+      checkLocationSuccess = true;
+      print("inService = " + inService.toString());
+    });
   }
 
   //google login//
@@ -79,7 +84,9 @@ class FirstState extends State<FirstPage> {
     print("googleLogin Start");
     await _getLocation(context.read<AppDataModel>());
     if (inService == false) {
-      setState(() {});
+      setState(() {
+        checkLocationSuccess = true;
+      });
     } else {
       final GoogleSignInAccount googleUser = await googleSignIn.signIn();
       final GoogleSignInAuthentication googleAuth =
@@ -142,7 +149,6 @@ class FirstState extends State<FirstPage> {
   }
 
   _checkLogin(AppDataModel appDataModel) async {
-
     var permission = await LocationPermissions().requestPermissions();
     print('location permission = ' + permission.toString());
     if (permission.toString() == "PermissionStatus.denied") {
@@ -150,7 +156,6 @@ class FirstState extends State<FirstPage> {
         locationPermission = false;
         checkLocationSuccess = true;
       });
-
     } else {
       locationPermission = true;
       await _getLocation(context.read<AppDataModel>());
@@ -240,9 +245,9 @@ class FirstState extends State<FirstPage> {
 
   Future<Null> findLocation() async {
     bool locationService = await checkLocationService();
-    if (locationService){
+    if (locationService) {
       print("LocationService Open");
-    }else{
+    } else {
       print("LocationService Close");
       Dialogs().alertLocationService(context);
     }
@@ -256,272 +261,290 @@ class FirstState extends State<FirstPage> {
     return Consumer<AppDataModel>(
         builder: (context, appDataModel, child) => Scaffold(
               backgroundColor: Colors.white,
-              body: (checkLocationSuccess == false) ?  Style().circularProgressIndicator(Style().darkColor) : (locationPermission == false)
-                  ? Container(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Style().titleH0("เฮาะ"),
-                            Style().textDark("อากาศเดลิเวอรี่"),
-                            Style().textSizeColor(
-                                "ไม่สามารถเข้าถึงตำแหน่งของคุณได้",
-                                16,
-                                Colors.deepOrange),
-                            Image.asset("assets/images/map.png"),
-                            Container(
-                              width: appDataModel.screenW * 0.9,
-                              child: ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      checkLogin = false;
-                                    });
-                                  },
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      Container(
-                                        //color: Colors.redAccent,
-                                        width:
-                                            (appDataModel.screenW * 0.9) * 0.1,
-                                      ),
-                                      Container(
-                                          //color: Colors.green,
-                                          width: (appDataModel.screenW * 0.9) *
-                                              0.8,
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Style().textBlack54(
-                                                  'อนุญาตให้เข้าถึงตำแหน่งมือถือ'),
-                                            ],
-                                          )),
-                                    ],
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                      primary: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(5)))),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : (checkLogin == true)
+              body: (checkLocationSuccess == false)
+                  ? Style().circularProgressIndicator(Style().darkColor)
+                  : (locationPermission == false)
                       ? Container(
-                          color: Colors.white,
-                          // color: Style().primaryColor,
                           child: Center(
-                              child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Style().titleH0("เฮาะ"),
-                              Style().textDark("อากาศเดลิเวอรี่"),
-                              (inService == false)
-                                  ? Container(
-                                      child: Style().textSizeColor(
-                                          'คุณอยู่นอกพื้นที่ให้บริการ !!',
-                                          16,
-                                          Colors.deepOrange))
-                                  : Column(
-                                      children: [
-                                        // Container(
-                                        //   margin: EdgeInsets.only(top: 50),
-                                        //   width: appDataModel.screenW * 0.9,
-                                        //   child: ElevatedButton(
-                                        //       onPressed: () {
-                                        //         signInWithFacebook(
-                                        //             context.read<AppDataModel>());
-                                        //       },
-                                        //       child: Row(
-                                        //         mainAxisAlignment:
-                                        //             MainAxisAlignment.spaceEvenly,
-                                        //         children: [
-                                        //           Container(
-                                        //             //   color: Colors.redAccent,
-                                        //             width: (appDataModel.screenW *
-                                        //                     0.9) *
-                                        //                 0.1,
-                                        //             child: Icon(
-                                        //               FontAwesomeIcons.facebook,
-                                        //               color: Colors.white,
-                                        //               size: 20,
-                                        //             ),
-                                        //           ),
-                                        //           Container(
-                                        //               //color: Colors.green,
-                                        //               width: (appDataModel.screenW *
-                                        //                       0.9) *
-                                        //                   0.8,
-                                        //               child: Row(
-                                        //                 mainAxisAlignment:
-                                        //                     MainAxisAlignment
-                                        //                         .center,
-                                        //                 children: [
-                                        //                   Style().textWhite(
-                                        //                       'เข้าใช้งานด้วย Facebook'),
-                                        //                 ],
-                                        //               ))
-                                        //         ],
-                                        //       ),
-                                        //       style: ElevatedButton.styleFrom(
-                                        //           primary: Style().facebookColor,
-                                        //           shape: RoundedRectangleBorder(
-                                        //               borderRadius:
-                                        //                   BorderRadius.circular(
-                                        //                       5)))),
-                                        // ),
-                                        Container(
-                                          width: appDataModel.screenW * 0.9,
-                                          child: ElevatedButton(
-                                              onPressed: () {
-                                                setState(() {
-                                                  loginIn = true;
-                                                });
-
-                                                signInWithGoogle(context
-                                                    .read<AppDataModel>());
-                                              },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Style().titleH0("เฮาะ"),
+                                Style().textDark("อากาศเดลิเวอรี่"),
+                                Style().textSizeColor(
+                                    "ไม่สามารถเข้าถึงตำแหน่งของคุณได้",
+                                    16,
+                                    Colors.deepOrange),
+                                Image.asset("assets/images/map.png"),
+                                Container(
+                                  width: appDataModel.screenW * 0.9,
+                                  child: ElevatedButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          checkLogin = false;
+                                        });
+                                      },
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          Container(
+                                            //color: Colors.redAccent,
+                                            width:
+                                                (appDataModel.screenW * 0.9) *
+                                                    0.1,
+                                          ),
+                                          Container(
+                                              //color: Colors.green,
+                                              width:
+                                                  (appDataModel.screenW * 0.9) *
+                                                      0.8,
                                               child: Row(
                                                 mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceEvenly,
+                                                    MainAxisAlignment.center,
                                                 children: [
-                                                  Container(
-                                                    //color: Colors.redAccent,
-                                                    width:
-                                                        (appDataModel.screenW *
-                                                                0.9) *
-                                                            0.1,
-                                                    child: (loginIn == true)? Container() : Image.asset(
-                                                      'assets/images/googleLogo.png',
-                                                      height: 20,
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                      //color: Colors.green,
-                                                      width: (appDataModel
-                                                                  .screenW *
-                                                              0.9) *
-                                                          0.8,
-                                                      child: Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                          (loginIn == true)
-                                                              ? Style()
-                                                                  .circularProgressIndicator(
+                                                  Style().textBlack54(
+                                                      'อนุญาตให้เข้าถึงตำแหน่งมือถือ'),
+                                                ],
+                                              )),
+                                        ],
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                          primary: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(5)))),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : (checkLogin == true)
+                          ? Container(
+                              color: Colors.white,
+                              // color: Style().primaryColor,
+                              child: Center(
+                                  child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Style().titleH0("เฮาะ"),
+                                  Style().textDark("อากาศเดลิเวอรี่"),
+                                  (inService == false)
+                                      ? Column(
+                                          children: [
+                                            Container(
+                                                child: Style().textSizeColor(
+                                                    'คุณอยู่นอกพื้นที่ให้บริการ !!',
+                                                    16,
+                                                    Colors.deepOrange)),
+                                            Container(
+                                                child: Style().textSizeColor(
+                                                    'ไม่เกิน $distanceLimit กิโลเมตรจากตัวอากาศ',
+                                                    14,
+                                                    Style().textColor))
+                                          ],
+                                        )
+                                      : Column(
+                                          children: [
+                                            // Container(
+                                            //   margin: EdgeInsets.only(top: 50),
+                                            //   width: appDataModel.screenW * 0.9,
+                                            //   child: ElevatedButton(
+                                            //       onPressed: () {
+                                            //         signInWithFacebook(
+                                            //             context.read<AppDataModel>());
+                                            //       },
+                                            //       child: Row(
+                                            //         mainAxisAlignment:
+                                            //             MainAxisAlignment.spaceEvenly,
+                                            //         children: [
+                                            //           Container(
+                                            //             //   color: Colors.redAccent,
+                                            //             width: (appDataModel.screenW *
+                                            //                     0.9) *
+                                            //                 0.1,
+                                            //             child: Icon(
+                                            //               FontAwesomeIcons.facebook,
+                                            //               color: Colors.white,
+                                            //               size: 20,
+                                            //             ),
+                                            //           ),
+                                            //           Container(
+                                            //               //color: Colors.green,
+                                            //               width: (appDataModel.screenW *
+                                            //                       0.9) *
+                                            //                   0.8,
+                                            //               child: Row(
+                                            //                 mainAxisAlignment:
+                                            //                     MainAxisAlignment
+                                            //                         .center,
+                                            //                 children: [
+                                            //                   Style().textWhite(
+                                            //                       'เข้าใช้งานด้วย Facebook'),
+                                            //                 ],
+                                            //               ))
+                                            //         ],
+                                            //       ),
+                                            //       style: ElevatedButton.styleFrom(
+                                            //           primary: Style().facebookColor,
+                                            //           shape: RoundedRectangleBorder(
+                                            //               borderRadius:
+                                            //                   BorderRadius.circular(
+                                            //                       5)))),
+                                            // ),
+                                            Container(
+                                              width: appDataModel.screenW * 0.9,
+                                              child: ElevatedButton(
+                                                  onPressed: () {
+                                                    setState(() {
+                                                      loginIn = true;
+                                                    });
+
+                                                    signInWithGoogle(context
+                                                        .read<AppDataModel>());
+                                                  },
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceEvenly,
+                                                    children: [
+                                                      (loginIn == true)
+                                                          ? Container()
+                                                          : Container(
+                                                              //color: Colors.redAccent,
+                                                              width: (appDataModel
+                                                                          .screenW *
+                                                                      0.9) *
+                                                                  0.1,
+                                                              child:
+                                                                  Image.asset(
+                                                                'assets/images/googleLogo.png',
+                                                                height: 20,
+                                                              ),
+                                                            ),
+                                                      Container(
+                                                          //color: Colors.green,
+                                                          width: (appDataModel
+                                                                      .screenW *
+                                                                  0.9) *
+                                                              0.8,
+                                                          child: Row(
+                                                            mainAxisAlignment:
+                                                                MainAxisAlignment
+                                                                    .center,
+                                                            children: [
+                                                              (loginIn == true)
+                                                                  ? Style().circularProgressIndicator(
                                                                       Style()
                                                                           .darkColor)
-                                                              : Style().textBlack54(
-                                                                  'เข้าใช้งานด้วย Google'),
-                                                        ],
-                                                      )),
-                                                ],
-                                              ),
-                                              style: ElevatedButton.styleFrom(
-                                                  primary: Colors.white,
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              5)))),
-                                        ),
-                                        // Stack(
-                                        //   alignment: Alignment.center,
-                                        //   children: <Widget>[
-                                        //     Column(
-                                        //         mainAxisAlignment:
-                                        //             MainAxisAlignment.center,
-                                        //         children: <Widget>[
-                                        //           Container(
-                                        //               width: MediaQuery.of(context)
-                                        //                       .size
-                                        //                       .width *
-                                        //                   0.9,
-                                        //               height: 10),
-                                        //           Container(
-                                        //               width: MediaQuery.of(context)
-                                        //                       .size
-                                        //                       .width *
-                                        //                   0.9,
-                                        //               height: 1,
-                                        //               color: Colors.grey),
-                                        //           Container(
-                                        //               width: MediaQuery.of(context)
-                                        //                       .size
-                                        //                       .width *
-                                        //                   0.9,
-                                        //               height: 10),
-                                        //         ]),
-                                        //     Container(
-                                        //       width: 50,
-                                        //       height: 50,
-                                        //       decoration: BoxDecoration(
-                                        //           color: Colors.white,
-                                        //           shape: BoxShape.circle),
-                                        //       child: Center(
-                                        //           child: Style()
-                                        //               .textBlackSmall('หรือ')),
-                                        //     ),
-                                        //   ],
-                                        // ),
-                                        // Container(
-                                        //   width: appDataModel.screenW * 0.9,
-                                        //   child: ElevatedButton(
-                                        //       onPressed: () {
-                                        //         Navigator.pushNamed(
-                                        //             context, '/login-page');
-                                        //       },
-                                        //       child: Row(
-                                        //         mainAxisAlignment:
-                                        //             MainAxisAlignment.spaceEvenly,
-                                        //         children: [
-                                        //           Container(
-                                        //             //   color: Colors.redAccent,
-                                        //             width: (appDataModel.screenW *
-                                        //                     0.9) *
-                                        //                 0.1,
-                                        //             child: Icon(
-                                        //               Icons.email,
-                                        //               color: Colors.white,
-                                        //               size: 20,
-                                        //             ),
-                                        //           ),
-                                        //           Container(
-                                        //               //color: Colors.green,
-                                        //               width: (appDataModel.screenW *
-                                        //                       0.9) *
-                                        //                   0.8,
-                                        //               child: Row(
-                                        //                 mainAxisAlignment:
-                                        //                     MainAxisAlignment
-                                        //                         .center,
-                                        //                 children: [
-                                        //                   Style().textWhite(
-                                        //                       'เข้าใช้งานด้วย Email'),
-                                        //                 ],
-                                        //               ))
-                                        //         ],
-                                        //       ),
-                                        //       style: ElevatedButton.styleFrom(
-                                        //           primary: Style().emailColor,
-                                        //           shape: RoundedRectangleBorder(
-                                        //               borderRadius:
-                                        //                   BorderRadius.circular(
-                                        //                       5)))),
-                                        // ),
-                                      ],
-                                    )
-                            ],
-                          )),
-                        )
-                      : Center(
-                          child: Style()
-                              .circularProgressIndicator(Style().darkColor)),
+                                                                  : Style()
+                                                                      .textBlack54(
+                                                                          'เข้าใช้งานด้วย Google'),
+                                                            ],
+                                                          )),
+                                                    ],
+                                                  ),
+                                                  style: ElevatedButton.styleFrom(
+                                                      primary: Colors.white,
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          5)))),
+                                            ),
+                                            // Stack(
+                                            //   alignment: Alignment.center,
+                                            //   children: <Widget>[
+                                            //     Column(
+                                            //         mainAxisAlignment:
+                                            //             MainAxisAlignment.center,
+                                            //         children: <Widget>[
+                                            //           Container(
+                                            //               width: MediaQuery.of(context)
+                                            //                       .size
+                                            //                       .width *
+                                            //                   0.9,
+                                            //               height: 10),
+                                            //           Container(
+                                            //               width: MediaQuery.of(context)
+                                            //                       .size
+                                            //                       .width *
+                                            //                   0.9,
+                                            //               height: 1,
+                                            //               color: Colors.grey),
+                                            //           Container(
+                                            //               width: MediaQuery.of(context)
+                                            //                       .size
+                                            //                       .width *
+                                            //                   0.9,
+                                            //               height: 10),
+                                            //         ]),
+                                            //     Container(
+                                            //       width: 50,
+                                            //       height: 50,
+                                            //       decoration: BoxDecoration(
+                                            //           color: Colors.white,
+                                            //           shape: BoxShape.circle),
+                                            //       child: Center(
+                                            //           child: Style()
+                                            //               .textBlackSmall('หรือ')),
+                                            //     ),
+                                            //   ],
+                                            // ),
+                                            // Container(
+                                            //   width: appDataModel.screenW * 0.9,
+                                            //   child: ElevatedButton(
+                                            //       onPressed: () {
+                                            //         Navigator.pushNamed(
+                                            //             context, '/login-page');
+                                            //       },
+                                            //       child: Row(
+                                            //         mainAxisAlignment:
+                                            //             MainAxisAlignment.spaceEvenly,
+                                            //         children: [
+                                            //           Container(
+                                            //             //   color: Colors.redAccent,
+                                            //             width: (appDataModel.screenW *
+                                            //                     0.9) *
+                                            //                 0.1,
+                                            //             child: Icon(
+                                            //               Icons.email,
+                                            //               color: Colors.white,
+                                            //               size: 20,
+                                            //             ),
+                                            //           ),
+                                            //           Container(
+                                            //               //color: Colors.green,
+                                            //               width: (appDataModel.screenW *
+                                            //                       0.9) *
+                                            //                   0.8,
+                                            //               child: Row(
+                                            //                 mainAxisAlignment:
+                                            //                     MainAxisAlignment
+                                            //                         .center,
+                                            //                 children: [
+                                            //                   Style().textWhite(
+                                            //                       'เข้าใช้งานด้วย Email'),
+                                            //                 ],
+                                            //               ))
+                                            //         ],
+                                            //       ),
+                                            //       style: ElevatedButton.styleFrom(
+                                            //           primary: Style().emailColor,
+                                            //           shape: RoundedRectangleBorder(
+                                            //               borderRadius:
+                                            //                   BorderRadius.circular(
+                                            //                       5)))),
+                                            // ),
+                                          ],
+                                        )
+                                ],
+                              )),
+                            )
+                          : Center(
+                              child: Style().circularProgressIndicator(
+                                  Style().darkColor)),
             ));
   }
 

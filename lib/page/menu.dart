@@ -45,6 +45,8 @@ class MenuState extends State<MenuPage> {
 
   bool updateTing = false;
 
+  int menuCount = 0 ;
+
   _getProduct(AppDataModel appDataModel) async {
     CollectionReference products =
         FirebaseFirestore.instance.collection('products');
@@ -60,6 +62,7 @@ class MenuState extends State<MenuPage> {
       }).toList();
       var jsobData = jsonEncode(list);
       appDataModel.productsData = productsModelFromJson(jsobData);
+      menuCount = appDataModel.productsData.length;
 
       productStatusList = [];
       appDataModel.productsData.forEach((element) {
@@ -90,7 +93,7 @@ class MenuState extends State<MenuPage> {
                 bottomOpacity: 0.0,
                 elevation: 0.0,
                 title: Style()
-                    .textSizeColor('สินค้าของคุณ', 18, Style().darkColor),
+                    .textSizeColor('สินค้า $menuCount รายการ', 16, Style().darkColor),
                 actions: [
                   IconButton(
                       icon: Icon(

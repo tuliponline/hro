@@ -212,9 +212,8 @@ class _MyDrawerState extends State<MyDrawer> {
                                     ],
                                   ),
                                 ),
-                          (customerOpen == false)
-                              ? Container()
-                              : Container(
+
+                              Container(
                                   // color: Colors.grey,
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,

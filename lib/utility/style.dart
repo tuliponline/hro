@@ -62,6 +62,15 @@ class Style {
         ],
       );
 
+  Widget textFlexibleBackSizeNonRow(String string, int maxLines, double size) => Flexible(
+    child: Text(string,
+        maxLines: maxLines,
+        softWrap: true,
+        overflow: TextOverflow.fade,
+        style: TextStyle(
+            fontSize: size, fontFamily: 'Prompt', color: textColor)),
+  );
+
   Widget titleH2(String string) => Text(
         string,
         style: TextStyle(fontSize: 18, fontFamily: 'Prompt', color: textColor),

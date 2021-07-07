@@ -33,6 +33,8 @@ class AppDataModel {
 
   int costDelivery = 20;
 
+  int allProductCurrentPage = 1;
+
   String noTiServer = 'https://us-central1-hro-authen.cloudfunctions.net/hello';
   String notifyServer = "https://us-central1-hro-authen.cloudfunctions.net/hello/notify";
 

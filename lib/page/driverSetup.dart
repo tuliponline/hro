@@ -17,6 +17,7 @@ import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/getTimeNow.dart';
 import 'package:hro/utility/notifySend.dart';
 import 'package:hro/utility/style.dart';
+import 'package:hro/utility/updateToken.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:location/location.dart';
 import 'package:provider/provider.dart';
@@ -244,6 +245,7 @@ class DriverSetupState extends State<DriverSetupPage> {
               .doc(appDataModel.profileUid)
               .set(data)
               .then((value) async {
+            await updateToken(appDataModel.profileUid, appDataModel.token);
             print('addNewDriver complete');
             await notifySend(appDataModel.notifyServer, appDataModel.adminToken, "Riderใหม่", "Rider " + name + " รอยืนยัน");
             await dialogs.information(
@@ -292,7 +294,8 @@ class DriverSetupState extends State<DriverSetupPage> {
 
       CollectionReference drivers =
           FirebaseFirestore.instance.collection('drivers');
-      await drivers.doc(appDataModel.profileUid).update(data).then((value) {
+      await drivers.doc(appDataModel.profileUid).update(data).then((value) async {
+        await updateToken(appDataModel.profileUid, appDataModel.token);
         normalDialog(
             context, 'บันทึกสำเร็จ', 'ข้อมูลได้ถูกบันทึกเรียบร้อยแล้ว');
         setState(() {

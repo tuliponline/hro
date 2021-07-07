@@ -33,24 +33,30 @@ class AllProductState extends State<AllProductsPage> {
   List<AllShopModel> _shopsData;
   int shopCount = 0;
 
-  TextEditingController  textController = TextEditingController();
+  TextEditingController textController = TextEditingController();
 
   _getDataAll(AppDataModel appDataModel) async {
+    currentPage = appDataModel.allProductCurrentPage;
     screenW = appDataModel.screenW;
-    await db.collection("products").where('product_status',isEqualTo: "1").get().then((value) async {
+    await db
+        .collection("products")
+        .where('product_status', isEqualTo: "1")
+        .get()
+        .then((value) async {
       var jsonData = await setList2Json(value);
       _productsDataRow = productsModelFromJson(jsonData);
       _productsData = _productsDataRow;
       print("productDataCount = " + _productsData.length.toString());
-      productCount =_productsData.length;
-
+      productCount = _productsData.length;
     });
 
-    await db.collection("shops").get().then((value) async{
+    await db.collection("shops").get().then((value) async {
       var jsonData = await setList2Json(value);
       _shopsDataRow = allShopModelFromJson(jsonData);
       _shopsDataRow2 = _shopsDataRow
-          .where((element) => (element.shopStatus).contains("1") || (element.shopStatus).contains("2"))
+          .where((element) =>
+              (element.shopStatus).contains("1") ||
+              (element.shopStatus).contains("2"))
           .toList();
       shopCount = _shopsDataRow2.length;
       _shopsData = _shopsDataRow2;
@@ -59,7 +65,6 @@ class AllProductState extends State<AllProductsPage> {
     setState(() {
       setData = true;
     });
-
   }
 
   @override
@@ -72,7 +77,11 @@ class AllProductState extends State<AllProductsPage> {
                 backgroundColor: Colors.white,
                 bottomOpacity: 0.0,
                 elevation: 0.0,
-                title: Style().textDarkAppbar('สินค้า/ร้านค้า'),
+                title:(currentPage == null || _productsData == null || _shopsData == null)? Container() : (currentPage == 1)
+                    ? Style().textDarkAppbar(
+                        'สินค้า ' + _productsData.length.toString() + " รายการ")
+                    : Style().textDarkAppbar(
+                        'ร้านค้า ' + _shopsData.length.toString() + " ร้าน"),
                 leading: Text(""),
                 actions: [
                   Row(
@@ -88,68 +97,29 @@ class AllProductState extends State<AllProductsPage> {
                   )
                 ],
               ),
-              body:(_productsData == null)? Style().circularProgressIndicator(Style().darkColor) : Container(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      buildMenu(context.read<AppDataModel>()),
-                      searchBar(),
-                      (currentPage == 1)? buildListProduct(context.read<AppDataModel>()) : _setPopularShop(context.read<AppDataModel>())
-                    ],
-                  ),
-                ),
-              ),
+              body: (_productsData == null)
+                  ? Style().circularProgressIndicator(Style().darkColor)
+                  : Container(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+
+                            searchBar(),
+                            (currentPage == 1)
+                                ? buildListProduct(context.read<AppDataModel>())
+                                : _setPopularShop(context.read<AppDataModel>())
+                          ],
+                        ),
+                      ),
+                    ),
             ));
   }
 
-  Container buildMenu(AppDataModel appDataModel) {
-    return Container(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Container(
-            width: (appDataModel.screenW * 0.9) / 2,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  primary: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5))),
-              child: Style().textBlackSize('สินค้า ' + productCount.toString(), 16),
-              onPressed: () {
-                setState(() {
-                  currentPage = 1;
-                  setData = false;
-                });
-              },
-            ),
-          ),
-          Container(
-            width: (appDataModel.screenW * 0.9) / 2,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  primary: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5))),
-              child: Style().textBlackSize('ร้านค้า ' + shopCount.toString(), 16),
-              onPressed: () {
-                setState(() {
 
-                  currentPage = 2;
-                  setData = false;
-                });
-
-
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   searchBar() {
     return Container(
-      margin: EdgeInsets.only(left: 20,bottom:10  ),
+      margin: EdgeInsets.only(left: 20, bottom: 10),
       height: 50,
       color: Colors.white,
       child: AnimSearchBar(
@@ -158,9 +128,8 @@ class AllProductState extends State<AllProductsPage> {
         helpText: "ค้นหา",
         style:
             TextStyle(fontSize: 16, fontFamily: 'Prompt', color: Colors.grey),
-       textController: textController,
+        textController: textController,
         suffixIcon: Icon(Icons.search),
-
         onSuffixTap: () {
           setState(() {
             startSearch();
@@ -171,19 +140,19 @@ class AllProductState extends State<AllProductsPage> {
   }
 
   startSearch() async {
-    if(currentPage == 1) {
-     _productsData = _productsDataRow
-          .where((element) => (element.productName).contains(textController.text) || (element.productDetail).contains(textController.text))
+    if (currentPage == 1) {
+      _productsData = _productsDataRow
+          .where((element) =>
+              (element.productName).contains(textController.text) ||
+              (element.productDetail).contains(textController.text))
           .toList();
-     productCount = _productsData.length;
-
-    }else{
+      productCount = _productsData.length;
+    } else {
       _shopsData = _shopsDataRow2
-          .where((element) => (element.shopName).contains(textController.text) )
+          .where((element) => (element.shopName).contains(textController.text))
           .toList();
       shopCount = _shopsData.length;
     }
-
   }
 
   buildListProduct(AppDataModel appDataModel) {
@@ -200,57 +169,54 @@ class AllProductState extends State<AllProductsPage> {
                       : Container(
                           color: Colors.white,
                           margin: EdgeInsets.only(bottom: 5),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                margin: EdgeInsets.only(left: 10, bottom: 8),
-                                height: 100,
+                          child: Container(
+                            margin: EdgeInsets.only(left: 10, bottom: 8),
+                            height: 100,
 
-                                //color: Colors.green,
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      height: 100,
-                                      width: 100,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        color: Colors.white,
-                                        image: DecorationImage(
-                                          fit: BoxFit.fill,
-                                          image: NetworkImage(
-                                              _productsData[i].productPhotoUrl),
-                                        ),
-                                      ),
+                            //color: Colors.green,
+                            child: Row(
+                              children: [
+                                Container(
+                                  height: 100,
+                                  width: 100,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(5),
+                                    color: Colors.white,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(5.0),
+                                    child: FadeInImage.assetNetwork(
+                                      fit: BoxFit.fitHeight,
+                                      placeholder: 'assets/images/loading.gif',
+                                      image: _productsData[i].productPhotoUrl,
                                     ),
-                                    Container(
-                                      padding: EdgeInsets.all(8),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Style().textBlackSize(
-
-                                                  _productsData[i].productName,
-                                              14),
-                                          Style().textBlackSize(
-                                              'รายละเอียด : ' +
-                                                  _productsData[i].productName,
-                                              12),
-                                          Style().textSizeColor(
-                                              'ราคา : ' +
-                                                  _productsData[i]
-                                                      .productPrice +
-                                                  " ฿",
-                                              14,
-                                              Style().darkColor),
-                                        ],
-                                      ),
-                                    )
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Expanded(
+                                    child: Container(
+                                  padding: EdgeInsets.all(8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Style().textFlexibleBackSize(
+                                          _productsData[i].productName, 2, 14),
+                                      Style().textFlexibleBackSize(
+                                          'รายละเอียด : ' +
+                                              _productsData[i].productName,
+                                          2,
+                                          12),
+                                      Style().textSizeColor(
+                                          'ราคา : ' +
+                                              _productsData[i].productPrice +
+                                              " ฿",
+                                          14,
+                                          Style().darkColor),
+                                    ],
+                                  ),
+                                ))
+                              ],
+                            ),
                           ),
                         ),
                 ],
@@ -263,67 +229,68 @@ class AllProductState extends State<AllProductsPage> {
   _setPopularShop(AppDataModel appDataModel) {
     return (_shopsData != null)
         ? Column(
-      children: [
-        for (int i = 0; i < _shopsData.length; i++)
-          Row(
             children: [
-              InkWell(
-                onTap: () async {
-                  appDataModel.storeSelectId = _shopsData[i].shopUid;
-                  await Navigator.pushNamed(context, '/store-page');
-                  appDataModel.currentOrder = [];
-                  //appDataModel.currentOrder.clear();
-                },
-                child: Container(
-                  margin: EdgeInsets.only(left: 10, bottom: 8),
-                  height: 100,
+              for (int i = 0; i < _shopsData.length; i++)
+                InkWell(
+                  onTap: () async {
+                    appDataModel.storeSelectId = _shopsData[i].shopUid;
+                    await Navigator.pushNamed(context, '/store-page');
+                    appDataModel.currentOrder = [];
+                    //appDataModel.currentOrder.clear();
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(left: 10, bottom: 8),
 
-                  //color: Colors.green,
-                  child: Row(
-                    children: [
-                      Container(
-                        height: 100,
-                        width: 100,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5),
-                          color: Colors.white,
-                          image: DecorationImage(
-                            fit: BoxFit.fitHeight,
-                            image: NetworkImage(
-                                _shopsData[i].shopPhotoUrl),
+                    //color: Colors.green,
+                    child: Row(
+                      children: [
+                        Container(
+                          height: 100,
+                          width: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5),
+                            color: Colors.white,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(5.0),
+                            child: FadeInImage.assetNetwork(
+                                fit: BoxFit.fitHeight,
+                                placeholder: 'assets/images/loading.gif',
+                                image: _shopsData[i].shopPhotoUrl),
                           ),
                         ),
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Style().textBlackSize(
-                                _shopsData[i].shopName +
-                                    "-" +
-                                    _shopsData[i].shopAddress,
-                                14),
-                            Row(
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Style().textBlackSize(
-                                    _shopsData[i].shopType, 10),
+                                Style().textFlexibleBackSize(
+                                    _shopsData[i].shopName +
+                                        "-" +
+                                        _shopsData[i].shopAddress,
+                                    2,
+                                    14),
+                                Row(
+                                  children: [
+                                    Style().textBlackSize(
+                                        _shopsData[i].shopType, 10),
+                                  ],
+                                ),
+                                paddingShopOpen(_shopsData[i].shopTime),
                               ],
                             ),
-                            paddingShopOpen(_shopsData[i].shopTime),
-                          ],
-                        ),
-                      )
-                    ],
+                          ),
+                        )
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                )
             ],
           )
-      ],
-    )
         : Container();
   }
+
   paddingShopOpen(String shopTime) {
     bool shopOpen = false;
     var now = DateTime.now();
@@ -358,21 +325,21 @@ class AllProductState extends State<AllProductsPage> {
         children: [
           (shopOpen == true)
               ? Container(
-            padding: EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: Style().darkColor,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Style().textSizeColor('เปิด', 12, Colors.white),
-          )
+                  padding: EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Style().darkColor,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Style().textSizeColor('เปิด', 12, Colors.white),
+                )
               : Container(
-            padding: EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: Colors.deepOrange,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Style().textSizeColor('ปิด', 12, Colors.white),
-          ),
+                  padding: EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Style().textSizeColor('ปิด', 12, Colors.white),
+                ),
         ],
       ),
     );

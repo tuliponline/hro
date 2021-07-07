@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:hro/model/AppDataModel.dart';
@@ -11,6 +12,7 @@ import 'package:hro/model/cartModel.dart';
 import 'package:hro/model/productsModel.dart';
 import 'package:hro/model/shopModel.dart';
 import 'package:hro/utility/checkShopTimeOpen.dart';
+import 'package:hro/utility/fetcProduct.dart';
 import 'package:hro/utility/getAddressName.dart';
 import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/style.dart';
@@ -39,6 +41,43 @@ class StoreState extends State<StorePage> {
   bool listView = true;
 
   List<ProductsModel> allProductData;
+
+
+  List<ProductsModel> _pairList = [];
+
+  final _itemFetcher = fetchProduct;
+  bool _isLoading = true;
+  bool _hasMore = true;
+  bool stopLoadProduct = false;
+  int limitProduct = 30;
+
+  void _loadMore(AppDataModel appDataModel) {
+    if (_pairList.length <= limitProduct) {
+      print("loadMore");
+      _isLoading = true;
+      _itemFetcher(allProductData).then((value) => {
+        if (value.isEmpty)
+          {
+            setState(() {
+              _isLoading = false;
+              _hasMore = false;
+              getDataStatus = true;
+            })
+          }
+        else
+          {
+            setState(() {
+              _isLoading = false;
+              _pairList.addAll(value);
+              getDataStatus = true;
+            })
+          }
+      });
+    } else {
+      _isLoading = false;
+    }
+  }
+
 
   _getShopData(AppDataModel appDataModel) async {
     storeSelectId = appDataModel.storeSelectId;
@@ -92,6 +131,7 @@ class StoreState extends State<StorePage> {
       appDataModel.storeProductsData = productsModelFromJson(jsobData);
       allProductData = appDataModel.storeProductsData;
       productCount = appDataModel.storeProductsData.length;
+      limitProduct = productCount;
     }).catchError((onError) {
       appDataModel.storeProductsData = null;
       print(onError.toString());
@@ -104,9 +144,7 @@ class StoreState extends State<StorePage> {
           .then((value) => shopOpen = value);
     }
 
-    setState(() {
-      getDataStatus = true;
-    });
+    _loadMore(context.read<AppDataModel>());
   }
 
   _getShopOpen(String shopTime) async {
@@ -186,8 +224,9 @@ class StoreState extends State<StorePage> {
                                 child: InkWell(
                                   onTap: () {
                                     appDataModel.currentOrder = [];
-                                    Navigator.pushNamedAndRemoveUntil(context,
-                                        '/home-page', (route) => false);
+                                    Navigator.pop(context);
+                                    // Navigator.pushNamedAndRemoveUntil(context,
+                                    //     '/home-page', (route) => false);
                                   },
                                   child: Container(
                                     child: Row(
@@ -550,6 +589,172 @@ class StoreState extends State<StorePage> {
                   ),
                 );
               }).toList(),
+            ),
+          ),
+        ],
+      ),
+    )
+        : Container();
+  }
+
+  _setProductLoadMore(AppDataModel appDataModel) {
+    return (appDataModel.allShopData != null)
+        ? Container(
+      margin: EdgeInsets.fromLTRB(10, 10, 10, 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.white,
+      ),
+      child: Column(
+        children: [
+
+          (allProductData == null)
+              ? Style().circularProgressIndicator(Style().darkColor)
+              : Container(
+            margin: EdgeInsets.fromLTRB(10, 10, 10, 0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              children: [
+
+
+                StaggeredGridView.countBuilder(
+                  shrinkWrap: true,
+                  primary: false,
+                  crossAxisCount: 4,
+                  itemCount: _hasMore ? _pairList.length + 1 : _pairList.length,
+                  staggeredTileBuilder: (int index) => StaggeredTile.fit(2),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  itemBuilder: (BuildContext context, int index) {
+                    ShopModel shopModel;
+                    for (var shop in appDataModel.allFullShopData) {
+                      if (index < _pairList.length) {
+                        if (shop.shopUid == _pairList[index].shopUid) {
+                          shopModel = shopModelFromJson(jsonEncode(shop));
+                        }
+                      }
+                    }
+
+                    // Uncomment the following line to see in real time how ListView.builder works
+                    // print('ListView.builder is building index $index');
+                    if (index >= _pairList.length) {
+                      print("index=" + index.toString());
+                      print("_pairList.length=" + _pairList.length.toString());
+                      // Don't trigger if one async loading is already under way
+                      if (!_isLoading) {
+                        _loadMore(context.read<AppDataModel>());
+                      }
+                      return Center(
+                        child: (_pairList.length <= limitProduct)
+                            ? Container(
+                          width: 150,
+                          height: 150,
+                          child: Center(
+                            child: CircularProgressIndicator(),
+
+                          ),
+                        )
+                            : Container(),
+                      );
+                    }
+
+                    return InkWell(
+                      onTap: () async {
+                        appDataModel.productSelectId = _pairList[index].productId;
+                        Navigator.pushNamed(context, "/showProduct-page");
+                      },
+                      child: Container(
+                        width: 180,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5),
+                          color: Colors.white,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Stack(
+                              children: [
+                                Container(
+                                    height: 180,
+                                    width: 180,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(5),
+                                      color: Colors.white,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(5.0),
+                                      child: FadeInImage.assetNetwork(
+                                        fit: BoxFit.fitHeight,
+                                        placeholder: 'assets/images/loading.gif',
+                                        image: _pairList[index].productPhotoUrl,
+                                      ),
+                                    )),
+                                // Container(height: 50,
+                                //   width: 50,child:  paddingShopOpen(e.shopTime, e.shopStatus),)
+                              ],
+                            ),
+                            Container(
+                              width: 170,
+                              margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
+                              child: Column(
+                                children: [
+                                  (shopModel == null || shopModel.shopName == null)
+                                      ? Style().textFlexibleBackSize(
+                                      _pairList[index].productName, 2, 14)
+                                      : Style().textFlexibleBackSize(
+                                      _pairList[index].productName +
+                                          " - " +
+                                          shopModel.shopName,
+                                      2,
+                                      14)
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 170,
+                              margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
+                              child: Column(
+                                children: [
+                                  Style().textFlexibleBackSize(
+                                      _pairList[index].productDetail, 2, 12)
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 170,
+                              margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Style().textSizeColor(
+                                      _pairList[index].productPrice + " ฿",
+                                      16,
+                                      Style().darkColor),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.motorcycle,
+                                        size: 20,
+                                      ),
+                                      Style().textSizeColor(
+                                          appDataModel.costDelivery.toString() + ' ฿',
+                                          14,
+                                          Style().shopPrimaryColor),
+                                    ],
+                                  )
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+
+                )
+              ],
             ),
           ),
         ],

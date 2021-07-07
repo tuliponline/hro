@@ -14,6 +14,7 @@ import 'package:hro/utility/getAddressName.dart';
 import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/notifySend.dart';
 import 'package:hro/utility/style.dart';
+import 'package:hro/utility/updateToken.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:location/location.dart';
 import 'package:provider/provider.dart';
@@ -271,6 +272,7 @@ class ShopSetupState extends State<ShopSetupPage> {
               .doc(appDataModel.profileUid)
               .set(data)
               .then((value) async {
+            await updateToken(appDataModel.profileUid, appDataModel.token);
             print('addNewUser complete');
             await notifySend(appDataModel.notifyServer, appDataModel.adminToken, "ร้านค้าใหม่", "ร้าน " + shopName + " รอยืนยัน");
             await dialogs.information(
@@ -323,7 +325,9 @@ class ShopSetupState extends State<ShopSetupPage> {
         'shop_location': '$lat,$lng',
         'shop_time': shopTime,
         'shop_status': shopStatus
-      }).then((value) {
+      }).then((value)  async{
+        await updateToken(appDataModel.profileUid, appDataModel.token);
+
         normalDialog(
             context, 'บันทึกสำเร็จ', 'ข้อมูลได้ถูกบันทึกเรียบร้อยแล้ว');
         setState(() {

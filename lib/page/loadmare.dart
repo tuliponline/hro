@@ -1,123 +1,87 @@
-import 'dart:async';
-import 'dart:convert';
+import 'dart:math';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:english_words/english_words.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/productsModel.dart';
-import 'package:loadmore/loadmore.dart';
+import 'package:hro/utility/fetcProduct.dart';
 import 'package:provider/provider.dart';
 
-class LoadMorePage extends StatefulWidget {
+class ListScreen extends StatefulWidget {
   @override
-  State<StatefulWidget> createState() {
-    return LoadMoreState();
-  }
+  _ListScreenState createState() => _ListScreenState();
 }
 
-class LoadMoreState extends State<LoadMorePage> {
-  int get count => list.length;
-  List<int> list = [];
-  int productLength;
-  bool getData = false;
-  List<ProductsModel> ranProductModel;
+class _ListScreenState extends State<ListScreen> {
+  List<ProductsModel> _pairList=[] ;
 
+  final _itemFetcher = fetchProduct;
 
-  void load() {
-    print("load");
-    setState(() {
-      int showCount = 10;
-      int leftCount = (productLength - list.length) ;
-      if ( leftCount > 10){
-        list.addAll(List.generate(showCount, (v) => v));
-      }else{
-        list.addAll(List.generate((leftCount), (v) => v));
-      }
-      print("data count = ${list.length}");
-      print("productCount = $productLength");
-      getData = true;
-    });
+  bool _isLoading = true;
+  bool _hasMore = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLoading = true;
+    _hasMore = true;
+    _loadMore(context.read<AppDataModel>());
   }
 
-
-
-  _getAllProduct(AppDataModel appDataModel) async {
-    await FirebaseFirestore.instance
-        .collection('products')
-        .where('product_status', isEqualTo: '1')
-        .get()
-        .then((value) async {
-      List<DocumentSnapshot> templist;
-      List list = new List();
-      templist = value.docs;
-      list = templist.map((DocumentSnapshot docSnapshot) {
-        return docSnapshot.data();
-      }).toList();
-      var jsonData = jsonEncode(list);
-      //print('allProductJsonData' + jsonData.toString());
-      ranProductModel = productsModelFromJson(jsonData);
-      productLength = ranProductModel.length;
-      load();
-    });
+  // Triggers fecth() and then add new items or change _hasMore flag
+  void _loadMore( AppDataModel appDataModel) {
+    _isLoading = true;
+    _itemFetcher(appDataModel.allProductsData).then((value) => {
+          if (value.isEmpty)
+            {
+              setState(() {
+                _isLoading = false;
+                _hasMore = false;
+              })
+            }
+          else
+            {
+              setState(() {
+                _isLoading = false;
+                _pairList.addAll(value);
+              })
+            }
+        });
   }
-
-  // appDataModel.storeProductsData
 
   @override
   Widget build(BuildContext context) {
-    if (getData == false) _getAllProduct(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
         builder: (context, appDataModel, child) => Scaffold(
-              body: Container(
-                child: RefreshIndicator(
-                  child: LoadMore(
-                    isFinish: count >= productLength,
-                    onLoadMore: _loadMore,
-                    child: ListView.builder(
-                      itemBuilder: (BuildContext context, int index) {
-                        return Column(
-                          children: [
-                            Text("product $index" +
-                                ranProductModel[index].productName),
-                            Container(
-                              child: Text(list[index].toString() +
-                                  "count =" +
-                                  productLength.toString()),
-                              height: 40.0,
-                              color: Colors.greenAccent,
-                              alignment: Alignment.center,
+              body: Scaffold(
+
+                body: SingleChildScrollView(
+                  child: Container(
+                    child: StaggeredGridView.countBuilder(
+
+                      shrinkWrap: true,
+                      primary: false,
+                      crossAxisCount: 4,
+                      itemCount: 8,
+                      itemBuilder: (BuildContext context, int index) => new Container(
+                          color: Colors.green,
+                          child: new Center(
+                            child: new CircleAvatar(
+                              backgroundColor: Colors.white,
+                              child: new Text('$index'),
                             ),
-                            Container(
-                                width: 150,
-                                height: 150,
-                                child: Image.network(
-                                    ranProductModel[index].productPhotoUrl))
-                          ],
-                        );
-                      },
-                      itemCount: count,
+                          )),
+                      staggeredTileBuilder: (int index) =>
+                      new StaggeredTile.count(2, index.isEven ? 2 : 1),
+                      mainAxisSpacing: 4.0,
+                      crossAxisSpacing: 4.0,
                     ),
-                    whenEmptyLoad: false,
-                    delegate: DefaultLoadMoreDelegate(),
-                    textBuilder: DefaultLoadMoreTextBuilder.english,
                   ),
-                  onRefresh: _refresh,
                 ),
               ),
             ));
-  }
-
-  Future<bool> _loadMore() async {
-    print("onLoadMore");
-    await Future.delayed(Duration(seconds: 0, milliseconds: 2000));
-    load();
-    return true;
-  }
-
-  Future<void> _refresh() async {
-    await Future.delayed(Duration(seconds: 0, milliseconds: 2000));
-    list.clear();
-    load();
   }
 }

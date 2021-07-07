@@ -85,7 +85,7 @@ class MyApp extends StatelessWidget {
           "/admin-page": (context) => AdminPage(),
           "/addProduct-page": (context) => AddProductPage(),
           "/editProduct-page": (context) => EditProductPage(),
-          "/loadMore-page": (context) => LoadMorePage(),
+          "/loadMore-page": (context) => ListScreen(),
 
 
 
