@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:hro/model/allShopModel.dart';
 import 'package:hro/model/driverModel.dart';
 import 'package:hro/model/productsModel.dart';
+import 'package:hro/model/ratingModel.dart';
 import 'package:hro/model/shopModel.dart';
 import 'package:hro/model/userModel.dart';
 import 'package:http/http.dart' as http;
@@ -10,6 +11,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'cartModel.dart';
+import 'locationSetupModel.dart';
 
 class AppDataModel {
   double _screenW;
@@ -31,12 +33,20 @@ class AppDataModel {
     _port = port;
   }
 
+  double distanceLimit = 2.0;
+
   int costDelivery = 20;
-
   int allProductCurrentPage = 1;
-
+  String ratingOrderId,ratingShopId,ratingRiderId,ratingCustomerId;
   String noTiServer = 'https://us-central1-hro-authen.cloudfunctions.net/hello';
   String notifyServer = "https://us-central1-hro-authen.cloudfunctions.net/hello/notify";
+
+  //location and costDelivery Setup
+  LocationSetupModel locationSetupModel;
+
+
+  List<AllShopModel> allShopAdminList;
+
 
   String adminToken ="";
 
@@ -56,6 +66,7 @@ class AppDataModel {
     _password = password;
   }
 
+  List<RatingListModel> shopRatingList;
 
   String productEditId;
 

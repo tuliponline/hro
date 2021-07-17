@@ -10,44 +10,44 @@ String productModelToJson(ProductModel data) => json.encode(data.toJson());
 
 class ProductModel {
   ProductModel({
+    this.productPhotoUrl,
+    this.productTime,
+    this.productDetail,
     this.productId,
     this.shopUid,
-    this.productName,
-    this.productPhotoUrl,
-    this.productDetail,
-    this.productPrice,
-    this.productTime,
     this.productStatus,
+    this.productPrice,
+    this.productName,
   });
 
-  dynamic productId;
-  dynamic shopUid;
-  dynamic productName;
-  dynamic productPhotoUrl;
-  dynamic productDetail;
-  dynamic productPrice;
-  dynamic productTime;
-  dynamic productStatus;
+  String productPhotoUrl;
+  String productTime;
+  String productDetail;
+  String productId;
+  String shopUid;
+  String productStatus;
+  String productPrice;
+  String productName;
 
   factory ProductModel.fromJson(Map<String, dynamic> json) => ProductModel(
+    productPhotoUrl: json["product_photoUrl"],
+    productTime: json["product_time"],
+    productDetail: json["product_detail"],
     productId: json["product_id"],
     shopUid: json["shop_uid"],
-    productName: json["product_name"],
-    productPhotoUrl: json["product_photoUrl"],
-    productDetail: json["product_detail"],
-    productPrice: json["product_price"],
-    productTime: json["product_time"],
     productStatus: json["product_status"],
+    productPrice: json["product_price"],
+    productName: json["product_name"],
   );
 
   Map<String, dynamic> toJson() => {
+    "product_photoUrl": productPhotoUrl,
+    "product_time": productTime,
+    "product_detail": productDetail,
     "product_id": productId,
     "shop_uid": shopUid,
-    "product_name": productName,
-    "product_photoUrl": productPhotoUrl,
-    "product_detail": productDetail,
-    "product_price": productPrice,
-    "product_time": productTime,
     "product_status": productStatus,
+    "product_price": productPrice,
+    "product_name": productName,
   };
 }

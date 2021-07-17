@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/orderModel.dart';
+import 'package:hro/model/ratingModel.dart';
 import 'package:hro/utility/getStatusString.dart';
+import 'package:hro/utility/snapshot2list.dart';
 import 'package:hro/utility/style.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +19,8 @@ class OrderListPage extends StatefulWidget {
 }
 
 class OrderListState extends State<OrderListPage> {
+  FirebaseFirestore db = FirebaseFirestore.instance;
+
   bool getOrderStatus = false;
   List<OrderList> orderListModel = [];
   List<OrderList> orderListInProcess = [];
@@ -24,12 +28,25 @@ class OrderListState extends State<OrderListPage> {
   List<OrderList> orderListCancel = [];
   List<OrderList> orderListFail = [];
 
+  List<RatingListModel> ratingListModel;
+
   int _selectedIndex = 0;
 
   Color darkColor;
 
   Future<Null> _getOrderListAll(AppDataModel appDataModel) async {
     darkColor = Style().darkColor;
+
+    await db
+        .collection('rating')
+        .where('customerId', isEqualTo: appDataModel.profileUid)
+        .get()
+        .then((value) async {
+      var jsonData = await setList2Json(value);
+      ratingListModel = ratingListModelFromJson(jsonData);
+      print("rating = " + ratingListModel.length.toString());
+    });
+
     await FirebaseFirestore.instance
         .collection('orders')
         .where('customerId', isEqualTo: appDataModel.profileUid)
@@ -65,7 +82,8 @@ class OrderListState extends State<OrderListPage> {
               e.status == '1' ||
               e.status == '2' ||
               e.status == '3' ||
-              e.status == '4')
+              e.status == '4' ||
+              e.status == '9')
           .toList();
       orderListComplete = orderListModel.where((e) => e.status == '5').toList();
       orderListCancel = orderListModel.where((e) => e.status == '0').toList();
@@ -184,7 +202,12 @@ class OrderListState extends State<OrderListPage> {
                       ],
                     ),
                     Column(
-                      children: orderListInProcess.map((e){
+                      children: orderListInProcess.map((e) {
+
+
+
+
+
 
                         return InkWell(
                           onTap: () async {
@@ -221,50 +244,20 @@ class OrderListState extends State<OrderListPage> {
                                     12,
                                     Style().textColor),
                               )),
-                              (e.status == '1')
+                              Column(children: [(e.status == '1')
                                   ? Container(
-                                      child: Column(
-                                        children: [
-                                          Icon(
-                                            FontAwesomeIcons.fileSignature,
-                                            color: Style().darkColor,
-                                          ),
-                                          Style().textSizeColor('รับ Order', 12,
-                                              Style().textColor)
-                                        ],
-                                      ),
-                                    )
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      FontAwesomeIcons.fileSignature,
+                                      color: Style().darkColor,
+                                    ),
+                                    Style().textSizeColor('รับ Order', 12,
+                                        Style().textColor)
+                                  ],
+                                ),
+                              )
                                   : (e.status == '2' || e.status == '3')
-                                      ? Container(
-                                          child: Column(
-                                            children: [
-                                              Icon(
-                                                FontAwesomeIcons.clock,
-                                                color: Style().darkColor,
-                                              ),
-                                              Style().textSizeColor(
-                                                  'กำลังเตรียมสินค้า',
-                                                  12,
-                                                  Style().textColor)
-                                            ],
-                                          ),
-                                        )
-                                      : (e.status == '4')
-                                          ? Container(
-                                              child: Column(
-                                                children: [
-                                                  Icon(
-                                                    FontAwesomeIcons.motorcycle,
-                                                    color: Style().darkColor,
-                                                  ),
-                                                  Style().textSizeColor(
-                                                      'กำลังออกจัดส่ง',
-                                                      12,
-                                                      Style().textColor)
-                                                ],
-                                              ),
-                                            )
-                                          : (e.status == '9')
                                   ? Container(
                                 child: Column(
                                   children: [
@@ -273,13 +266,46 @@ class OrderListState extends State<OrderListPage> {
                                       color: Style().darkColor,
                                     ),
                                     Style().textSizeColor(
+                                        'กำลังเตรียมสินค้า',
+                                        12,
+                                        Style().textColor)
+                                  ],
+                                ),
+                              )
+                                  : (e.status == '4')
+                                  ? Container(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      FontAwesomeIcons.motorcycle,
+                                      color: Style().darkColor,
+                                    ),
+                                    Style().textSizeColor(
+                                        'กำลังออกจัดส่ง',
+                                        12,
+                                        Style().textColor)
+                                  ],
+                                ),
+                              )
+                                  : (e.status == '9')
+                                  ? Container(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      FontAwesomeIcons.clock,
+                                      color:
+                                      Style().darkColor,
+                                    ),
+                                    Style().textSizeColor(
                                         'รอพนักงานตอบรับ',
                                         12,
                                         Style().textColor)
                                   ],
                                 ),
-                              ):Container()
-                            ],
+                              )
+                                  : Container(),   ],),
+
+                             ],
                           ),
                         );
                       }).toList(),
@@ -311,6 +337,19 @@ class OrderListState extends State<OrderListPage> {
                     ),
                     Column(
                       children: orderListComplete.map((e) {
+                        RatingModel ratingModel;
+                        ratingListModel.forEach((element) {
+                          print('RiderComment'+element.orderId);
+
+                          if (element.orderId == e.orderId){
+
+                            var jsonData = jsonEncode(element);
+                            ratingModel = ratingModelFromJson(jsonData);
+                            print('riderComment' + ratingModel.riderComment);
+                          }
+                        });
+
+
                         return InkWell(
                             onTap: () {
                               appDataModel.orderIdSelected = e.orderId;
@@ -338,18 +377,48 @@ class OrderListState extends State<OrderListPage> {
                                     12,
                                     Style().textColor),
                               )),
-                              Container(
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      FontAwesomeIcons.check,
-                                      color: Colors.blueAccent,
-                                    ),
-                                    Style().textSizeColor(
-                                        'สำเร็จ', 12, Style().textColor)
-                                  ],
-                                ),
-                              )
+                           Column(children: [   Container(
+                             child: Column(
+                               children: [
+                                 Icon(
+                                   FontAwesomeIcons.check,
+                                   color: Colors.blueAccent,
+                                 ),
+                                 Style().textSizeColor(
+                                     'สำเร็จ', 12, Style().textColor)
+                               ],
+                             ),
+                           ),(ratingModel == null)? Container(
+                             margin: EdgeInsets.only(right: 5),
+                             padding: EdgeInsets.all(1),
+                             child: Row(
+                               mainAxisAlignment: MainAxisAlignment.end,
+                               children: [
+                                 ElevatedButton(
+                                   onPressed: () async {
+                                     appDataModel.ratingOrderId = e.orderId;
+                                     appDataModel.ratingShopId = e.shopId;
+                                     appDataModel.ratingRiderId = e.driver;
+
+                                     var result =  await   Navigator.pushNamed(
+                                         context,  "/Rating4Customer-page");
+                                     if (result != null && result == true){
+                                       setState(() {
+                                         getOrderStatus = false;
+                                       });
+                                     }
+                                   },
+                                   child: Style().textSizeColor(
+                                       'ให้คะแนน', 14, Colors.white),
+                                   style: ElevatedButton.styleFrom(
+                                       primary: Colors.redAccent,
+                                       shape: RoundedRectangleBorder(
+                                           borderRadius:
+                                           BorderRadius.circular(5))),
+                                 ),
+                               ],
+                             ),
+                           )  : Container()],)
                             ]));
                       }).toList(),
                     )

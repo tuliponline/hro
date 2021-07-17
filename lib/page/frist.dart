@@ -48,12 +48,12 @@ class FirstState extends State<FirstPage> {
 
   bool locationPermission = false;
   bool checkLocationSuccess = false;
-
   bool loginIn = false;
-
-  double distanceLimit = 2.0;
+  double distanceLimit ;
 
   Future<Null> _getLocation(AppDataModel appDataModel) async {
+    distanceLimit = appDataModel.distanceLimit;
+
     if (Foundation.kDebugMode) {
       print("App in debug mode");
     } else {
@@ -83,11 +83,6 @@ class FirstState extends State<FirstPage> {
   Future<Null> signInWithGoogle(AppDataModel appDataModel) async {
     print("googleLogin Start");
     await _getLocation(context.read<AppDataModel>());
-    if (inService == false) {
-      setState(() {
-        checkLocationSuccess = true;
-      });
-    } else {
       final GoogleSignInAccount googleUser = await googleSignIn.signIn();
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -106,7 +101,7 @@ class FirstState extends State<FirstPage> {
         appDataModel.loginProvider = credential.providerId;
         _checkHaveUser(context.read<AppDataModel>());
       });
-    }
+
   }
 
 // facebook login
@@ -159,11 +154,7 @@ class FirstState extends State<FirstPage> {
     } else {
       locationPermission = true;
       await _getLocation(context.read<AppDataModel>());
-      if (inService == false) {
-        setState(() {
-          checkLogin = true;
-        });
-      } else {
+
         final FirebaseAuth auth = await FirebaseAuth.instance;
         final User user = auth.currentUser;
         if (user != null) {
@@ -194,7 +185,7 @@ class FirstState extends State<FirstPage> {
             checkLogin = true;
           });
         }
-      }
+
     }
   }
 
@@ -329,69 +320,8 @@ class FirstState extends State<FirstPage> {
                                 children: [
                                   Style().titleH0("เฮาะ"),
                                   Style().textDark("อากาศเดลิเวอรี่"),
-                                  (inService == false)
-                                      ? Column(
+                                   Column(
                                           children: [
-                                            Container(
-                                                child: Style().textSizeColor(
-                                                    'คุณอยู่นอกพื้นที่ให้บริการ !!',
-                                                    16,
-                                                    Colors.deepOrange)),
-                                            Container(
-                                                child: Style().textSizeColor(
-                                                    'ไม่เกิน $distanceLimit กิโลเมตรจากตัวอากาศ',
-                                                    14,
-                                                    Style().textColor))
-                                          ],
-                                        )
-                                      : Column(
-                                          children: [
-                                            // Container(
-                                            //   margin: EdgeInsets.only(top: 50),
-                                            //   width: appDataModel.screenW * 0.9,
-                                            //   child: ElevatedButton(
-                                            //       onPressed: () {
-                                            //         signInWithFacebook(
-                                            //             context.read<AppDataModel>());
-                                            //       },
-                                            //       child: Row(
-                                            //         mainAxisAlignment:
-                                            //             MainAxisAlignment.spaceEvenly,
-                                            //         children: [
-                                            //           Container(
-                                            //             //   color: Colors.redAccent,
-                                            //             width: (appDataModel.screenW *
-                                            //                     0.9) *
-                                            //                 0.1,
-                                            //             child: Icon(
-                                            //               FontAwesomeIcons.facebook,
-                                            //               color: Colors.white,
-                                            //               size: 20,
-                                            //             ),
-                                            //           ),
-                                            //           Container(
-                                            //               //color: Colors.green,
-                                            //               width: (appDataModel.screenW *
-                                            //                       0.9) *
-                                            //                   0.8,
-                                            //               child: Row(
-                                            //                 mainAxisAlignment:
-                                            //                     MainAxisAlignment
-                                            //                         .center,
-                                            //                 children: [
-                                            //                   Style().textWhite(
-                                            //                       'เข้าใช้งานด้วย Facebook'),
-                                            //                 ],
-                                            //               ))
-                                            //         ],
-                                            //       ),
-                                            //       style: ElevatedButton.styleFrom(
-                                            //           primary: Style().facebookColor,
-                                            //           shape: RoundedRectangleBorder(
-                                            //               borderRadius:
-                                            //                   BorderRadius.circular(
-                                            //                       5)))),
-                                            // ),
                                             Container(
                                               width: appDataModel.screenW * 0.9,
                                               child: ElevatedButton(

@@ -2,6 +2,11 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
+// var jsonData = await setList2Json(value);
+// print(jsonData);
+// orderProduct = orderProductFromJson(jsonData);
+
  setList2Json(QuerySnapshot<Map<String, dynamic>> value) {
 
   String jsonData;
@@ -17,3 +22,5 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
   return jsonData.toString();
 }
+
+

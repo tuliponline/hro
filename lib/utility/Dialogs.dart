@@ -190,21 +190,18 @@ class Dialogs {
             content: SingleChildScrollView(
               child: Row(
                 children: [
-                  icon
 
-                  // Icon(
-                  //   Icons.delete,
-                  //   color: Colors.blue,
-                  //   semanticLabel:
-                  //   'Text to announce in accessibility modes',
-                  ,
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(left: 10),
                       child: ListBody(
                         children: [
-                          Style().textSizeColor(
-                              description, 14, Style().textColor),
+                          Text(description,
+                              maxLines: 5,
+                              softWrap: true,
+                              overflow: TextOverflow.fade,
+                              style: TextStyle(
+                                  fontSize: 14, fontFamily: 'Prompt', color: Style().textColor))
                         ],
                       ),
                     ),
@@ -213,11 +210,11 @@ class Dialogs {
               ),
             ),
             actions: [
-              FlatButton(
+              TextButton(
                 onPressed: () => _confirmResult(false, context),
-                child: Style().textSizeColor('ยกเลิก', 14, Colors.blueAccent),
+                child: Style().textSizeColor('ยกเลิก', 14, Colors.black),
               ),
-              FlatButton(
+              TextButton(
                 onPressed: () => _confirmResult(true, context),
                 child: Style().textSizeColor('ตกลง', 14, Colors.blueAccent),
               ),
@@ -355,17 +352,153 @@ class Dialogs {
         context: context,
         builder: (context) => AlertDialog(
               title: Style().textBlackSize("แอฟต้องการเข้าถึงตำแหน่ง", 16),
-              content: SingleChildScrollView(child: ListBody(children: [
-                Style().textBlackSize("โปรดตั้งค่า และ เปิดใช้ตำแหน่ง ", 14),
-              ],),),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: [
+                    Style()
+                        .textBlackSize("โปรดตั้งค่า และ เปิดใช้ตำแหน่ง ", 14),
+                  ],
+                ),
+              ),
               actions: [
                 TextButton(
                     onPressed: () async {
                       await Geolocator.openLocationSettings();
                       exit(0);
                     },
-                    child: Style().textSizeColor("OK", 14,Colors.blueAccent))
+                    child: Style().textSizeColor("OK", 14, Colors.blueAccent))
               ],
             ));
+  }
+
+  confirmDetail(BuildContext context, String title, String description) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Style().textSizeColor(title, 14, Style().textColor),
+            content: SingleChildScrollView(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: ListBody(
+                        children: [
+                          Style().textFlexibleBackSize(
+                            description,
+                            10,
+                            14,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              FlatButton(
+                onPressed: () => _confirmResult(false, context),
+                child: Style().textSizeColor('ยกเลิก', 14, Colors.blueAccent),
+              ),
+              FlatButton(
+                onPressed: () => _confirmResult(true, context),
+                child: Style().textSizeColor('ตกลง', 14, Colors.blueAccent),
+              ),
+            ],
+          );
+        });
+  }
+
+  confirmRider(BuildContext context) {
+    return showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Style().textSizeColor('เงื่อนไข', 14, Style().textColor),
+            content: SingleChildScrollView(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: Column(
+                        children: [
+                          ListBody(
+                            children: [
+                              Style().textFlexibleBackSize(
+                                '1.ต้องมียานพาหนะในการส่งสินค้า',
+                                10,
+                                14,
+                              ),
+                            ],
+                          ),
+                          ListBody(
+                            children: [
+                              Style().textFlexibleBackSize(
+                                '2.Rider ต้องสำรองค่าสินค้าให้ร้านค้าก่อน และเก็บเงินจากลูกค้าภายหลัง',
+                                10,
+                                14,
+                              ),
+                            ],
+                          ),
+                          ListBody(
+                            children: [
+                              Style().textFlexibleBackSize(
+                                '3.Rider จะต้องโทรยืนยัน Order กับลูค้ากดกดรับOrder',
+                                10,
+                                14,
+                              ),
+                            ],
+                          ),
+                          ListBody(
+                            children: [
+                              Style().textFlexibleBackSize(
+                                '4.หากไม่สะดวกรับงานหรือออกนอกพื้นที่ต้องใช้โหมดofflineเสมอ',
+                                10,
+                                14,
+                              ),
+                            ],
+                          ),
+                          ListBody(
+                            children: [
+                              Style().textFlexibleBackSize(
+                                '5.ต้องไม่เสพสารเสพติด',
+                                10,
+                                14,
+                              ),
+                            ],
+                          ),
+                          ListBody(
+                            children: [
+                              Style().textFlexibleBackSize(
+                                '6.ไม่ดื่มสุราในขณะส่งสินค้า',
+                                10,
+                                14,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              FlatButton(
+                onPressed: () => _confirmResult(false, context),
+                child: Style().textSizeColor('ยกเลิก', 14, Colors.blueAccent),
+              ),
+              FlatButton(
+                onPressed: () => _confirmResult(true, context),
+                child: Style().textSizeColor('ตกลง', 14, Colors.blueAccent),
+              ),
+            ],
+          );
+        });
   }
 }

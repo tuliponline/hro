@@ -61,6 +61,18 @@ class Style {
           ),
         ],
       );
+  Widget textFlexibleColorSize(String string, int maxLines, double size,Color color) => Row(
+    children: [
+      Flexible(
+        child: Text(string,
+            maxLines: maxLines,
+            softWrap: true,
+            overflow: TextOverflow.fade,
+            style: TextStyle(
+                fontSize: size, fontFamily: 'Prompt', color: color)),
+      ),
+    ],
+  );
 
   Widget textFlexibleBackSizeNonRow(String string, int maxLines, double size) => Flexible(
     child: Text(string,

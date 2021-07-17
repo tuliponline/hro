@@ -13,7 +13,9 @@ import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/addLog.dart';
 import 'package:hro/utility/driverStatus.dart';
 import 'package:hro/utility/getTimeNow.dart';
+import 'package:hro/utility/snapshot2list.dart';
 import 'package:hro/utility/style.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 class DriversPage extends StatefulWidget {
@@ -34,16 +36,17 @@ class DriversState extends State<DriversPage> {
   List<OrderList> orderList;
   int driverQueueNow;
 
+  List<OrderList> orderWaiteList;
+
+
   FirebaseFirestore db = FirebaseFirestore.instance;
 
   _setData(AppDataModel appDataModel) async {
-
     uid = appDataModel.profileUid;
     await FirebaseFirestore.instance
         .collection('drivers')
         .doc(uid)
         .update({'token': appDataModel.token});
-
     await FirebaseFirestore.instance
         .collection('drivers')
         .doc(uid)
@@ -52,6 +55,7 @@ class DriversState extends State<DriversPage> {
       driversModel = driversModelFromJson(jsonEncode(value.data()));
       print('location ' + driversModel.driverStatus);
       await _getOrders(context.read<AppDataModel>());
+
       driverQueueNow = await driverQueue(uid);
       (driversModel.driverStatus != '0')
           ? driverStatus = true
@@ -70,7 +74,7 @@ class DriversState extends State<DriversPage> {
         .orderBy("orderId", descending: true)
         .limit(5)
         .get()
-        .then((value) {
+        .then((value)  async{
       print('valueType=' + value.runtimeType.toString());
 
       List<DocumentSnapshot> templist;
@@ -85,7 +89,22 @@ class DriversState extends State<DriversPage> {
       print('jsonDataType=' + jsonData.runtimeType.toString());
       print('OrdersList' + jsonData.toString());
       orderList = orderListFromJson(jsonData);
+
+
+
     });
+
+    await db.collection('orders')
+        .where('status', isEqualTo: "1")
+        .orderBy("orderId", descending: true)
+        .get().then((valueWaite) async{
+      var jsonData = await setList2Json(valueWaite);
+      orderWaiteList = orderListFromJson(jsonData);
+      print("orderWait = " + orderWaiteList.length.toString());
+    });
+
+
+
   }
 
   _Notififation() {
@@ -106,12 +125,10 @@ class DriversState extends State<DriversPage> {
       }
     });
   }
-
   void initState() {
     super.initState();
     _Notififation();
   }
-
   Widget build(BuildContext context) {
     if (getDriverData == false) _setData(context.read<AppDataModel>());
     return Consumer<AppDataModel>(
@@ -124,9 +141,18 @@ class DriversState extends State<DriversPage> {
                       backgroundColor: Colors.white,
                       bottomOpacity: 0.0,
                       elevation: 0.0,
-                      title: Style()
-                          .textSizeColor('Rider', 18, Style().darkColor),
+                      title:
+                          Style().textSizeColor('Rider', 18, Style().darkColor),
                       actions: [
+                        IconButton(
+                            icon: Icon(
+                              FontAwesomeIcons.exclamationTriangle,
+                              color: Colors.deepOrangeAccent,
+                              size: 20,
+                            ),
+                            onPressed: () async {
+                              await Dialogs().confirmRider(context);
+                            }),
                         IconButton(
                             icon: Icon(
                               FontAwesomeIcons.sync,
@@ -136,7 +162,7 @@ class DriversState extends State<DriversPage> {
                             onPressed: () {
                               _setData(context.read<AppDataModel>());
                             }),
-                         Container(
+                        Container(
                           child: Container(
                             margin: EdgeInsets.only(right: 5),
                             padding: EdgeInsets.all(1),
@@ -145,7 +171,8 @@ class DriversState extends State<DriversPage> {
                               children: [
                                 ElevatedButton(
                                   onPressed: () {
-                                    Navigator.pushNamed(context, "/driverSetup-page",
+                                    Navigator.pushNamed(
+                                        context, "/driverSetup-page",
                                         arguments: 'OLD');
                                   },
                                   child: Style().textSizeColor(
@@ -154,7 +181,7 @@ class DriversState extends State<DriversPage> {
                                       primary: Style().darkColor,
                                       shape: RoundedRectangleBorder(
                                           borderRadius:
-                                          BorderRadius.circular(5))),
+                                              BorderRadius.circular(5))),
                                 ),
                               ],
                             ),
@@ -178,12 +205,27 @@ class DriversState extends State<DriversPage> {
                                       left: 10, right: 10, top: 10),
                                   child: buildShopMenu(
                                       context.read<AppDataModel>()),
+                                ), Container(
+                                  child: SingleChildScrollView(
+                                    child: (orderWaiteList.length == null || driversModel.driverStatus != "1")
+                                        ? Container(
+
+                                    )
+                                        : buildOrderWaite(
+                                        context.read<AppDataModel>()),
+                                  ),
                                 ),
                                 Container(
                                   child: SingleChildScrollView(
-                                    child: (orderList.length == 0) ? Container(child: Center(child: Style().textBlackSize(
-                                        "ไม่มีคิวงาน", 16),),)  :buildOrderList(
-                                        context.read<AppDataModel>()),
+                                    child: (orderList.length == 0)
+                                        ? Container(
+                                            child: Center(
+                                              child: Style().textBlackSize(
+                                                  "ไม่มีคิวงาน", 16),
+                                            ),
+                                          )
+                                        : buildOrderList(
+                                            context.read<AppDataModel>()),
                                   ),
                                 )
                                 //buildPopularProduct(),
@@ -208,13 +250,13 @@ class DriversState extends State<DriversPage> {
                       ? Row(
                           children: [
                             Style().textSizeColor('Online ', 16, Colors.green),
-                            Style().textSizeColor(
-                                '( คิว ' + driverQueueNow.toString() + " )",
-                                16,
-                                Colors.deepOrangeAccent),
                           ],
                         )
-                      : (driversModel.driverStatus == '3')? Style().textSizeColor("รอตรวจสอบ", 16, Colors.orange) : Style().textSizeColor("กำลังออกส่ง", 16, Colors.green),
+                      : (driversModel.driverStatus == '3')
+                          ? Style()
+                              .textSizeColor("รอตรวจสอบ", 16, Colors.orange)
+                          : Style()
+                              .textSizeColor("กำลังออกส่ง", 16, Colors.green),
                   subtitle:
                       Style().textSizeColor('สถานะ ', 14, Style().textColor),
                 ),
@@ -255,6 +297,288 @@ class DriversState extends State<DriversPage> {
     );
   }
 
+  Column buildOrderWaite(AppDataModel appDataModel) {
+    return Column(
+      children: orderWaiteList.map((e) {
+        String statusStr = '';
+        switch (e.status) {
+          case '0':
+            {
+              statusStr = 'ยกเลิก';
+            }
+            break;
+
+          case '1':
+            {
+              statusStr = 'รับOrder';
+            }
+            break;
+
+          case '2':
+            {
+              statusStr = 'ร้านค้ารับ Order แล้ว';
+            }
+            break;
+
+          case '3':
+            {
+              statusStr = 'ร้านค้ากำลังเตรียม';
+            }
+            break;
+
+          case '4':
+            {
+              statusStr = 'กำลังจัดส่ง';
+            }
+            break;
+          case '5':
+            {
+              statusStr = 'ส่งสำเร็จ';
+            }
+            break;
+          case '6':
+            {
+              statusStr = 'ส่งไม่สำเร็จ/ยกเลิก';
+            }
+        }
+
+        return InkWell(
+          onTap: () async {
+            appDataModel.orderIdSelected = e.orderId;
+            if (e.comment != null) appDataModel.orderAddressComment = e.comment;
+            print(e.location);
+            List<String> locationLatLng = e.location.split(',');
+            appDataModel.latOrder = double.parse(locationLatLng[0]);
+            appDataModel.lngOrder = double.parse(locationLatLng[1]);
+
+            Navigator.pushNamed(context, "/order2driver-page");
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10.0),
+              color: (e.status == '9' ||
+                  e.status == '1' ||
+                  e.status == '2' ||
+                  e.status == '3' ||
+                  e.status == '4')
+                  ? Color.fromRGBO(255, 187, 147, 0.8)
+                  : Colors.white,
+            ),
+            margin: EdgeInsets.only(top: 8, left: 8, right: 8),
+            child: Row(
+              children: [
+                Expanded(
+                    child: ListTile(
+                      title:
+                      Style().textFlexibleBackSize('order ' + e.orderId, 2, 14),
+                      subtitle: Style().textBlackSize('วันที่ '+e.startTime, 12),
+                    )),
+                (e.status == '1')
+                    ? Container(
+                  margin: EdgeInsets.only(right: 10),
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      print('confirm');
+                      var result = await Dialogs().confirm(
+                          context,
+                          "รับ Order ?",
+                          "รับ Order " + e.orderId,
+                          Icon(FontAwesomeIcons.question));
+                      print("Resulr = $result");
+                      if (result == true) {
+                        _confirmOrder(
+                            context.read<AppDataModel>(), e.orderId);
+                      }
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Style().titleH3('รับOrder'),
+                        Icon(Icons.check)
+                      ],
+                    ),
+                    style: ElevatedButton.styleFrom(
+                        primary: Style().primaryColor,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5))),
+                  ),
+                )
+                    : (e.status == '2' || e.status == '4')
+                    ? Container(
+                  margin:
+                  EdgeInsets.only(right: 8, top: 8, bottom: 8),
+                  child: Column(
+                    children: [
+                      Style().textBlackSize(statusStr, 14),
+                      Row(
+                        children: [
+                          Container(
+                            margin: EdgeInsets.only(right: 5),
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                print('cancelOrder By Driver');
+                                _cancelOrder(
+                                    context.read<AppDataModel>(),
+                                    e.orderId);
+                              },
+                              child: Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.center,
+                                children: [
+                                  Style().textSizeColor(
+                                      'ยกเลิก', 14, Colors.white),
+                                ],
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                  primary: Colors.redAccent,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                      BorderRadius.circular(5))),
+                            ),
+                          ),
+                          (e.status == '2')
+                              ? Container(
+                            margin: EdgeInsets.only(
+                                right: 8, top: 8, bottom: 8),
+                            child: Column(
+                              children: [
+                                Container(
+                                  margin: EdgeInsets.only(
+                                      right: 10),
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      var result =
+                                      await Dialogs().confirm(
+                                          context,
+                                          "รับสินค้า",
+                                          "รับสินค้าที่ร้านค้า",
+                                          Icon(
+                                            FontAwesomeIcons
+                                                .questionCircle,
+                                            color: Style()
+                                                .darkColor,
+                                          ));
+                                      print('Delivering');
+                                      if (result == true) {
+                                        _delivering(
+                                            context.read<
+                                                AppDataModel>(),
+                                            e.orderId);
+                                      }
+                                    },
+                                    child: Row(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment
+                                          .center,
+                                      children: [
+                                        Style().textSizeColor(
+                                            'รับสินค้า',
+                                            14,
+                                            Colors.white)
+                                      ],
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                        primary:
+                                        Style().darkColor,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                            BorderRadius
+                                                .circular(
+                                                5))),
+                                  ),
+                                )
+                              ],
+                            ),
+                          )
+                              : Container(
+                            margin: EdgeInsets.only(right: 5),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                print('Order Success');
+                                _orderSuccess(
+                                    context
+                                        .read<AppDataModel>(),
+                                    e.orderId);
+                              },
+                              child: Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.center,
+                                children: [
+                                  Style().textSizeColor(
+                                      'จัดส่งสำเร็จ',
+                                      12,
+                                      Colors.white),
+                                ],
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                  primary: Style().darkColor,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                      BorderRadius.circular(
+                                          5))),
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                )
+                    : (e.status == '3')
+                    ? Container(
+                  margin: EdgeInsets.only(
+                      right: 8, top: 8, bottom: 8),
+                  child: Column(
+                    children: [
+                      Style().textBlackSize(statusStr, 14),
+                      Container(
+                        margin: EdgeInsets.only(right: 10),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            var result = await Dialogs().confirm(
+                                context,
+                                "รับสินค้า",
+                                "รับสินค้าที่ร้านค้า",
+                                Icon(
+                                  FontAwesomeIcons.questionCircle,
+                                  color: Style().darkColor,
+                                ));
+                            if (result == true) {
+                              print('Delivering');
+                              _delivering(
+                                  context.read<AppDataModel>(),
+                                  e.orderId);
+                            }
+                          },
+                          child: Row(
+                            mainAxisAlignment:
+                            MainAxisAlignment.center,
+                            children: [
+                              Style().textSizeColor(
+                                  'รับสินค้า', 14, Colors.white),
+                            ],
+                          ),
+                          style: ElevatedButton.styleFrom(
+                              primary: Style().darkColor,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                  BorderRadius.circular(5))),
+                        ),
+                      )
+                    ],
+                  ),
+                )
+                    : Container(
+                  margin: EdgeInsets.only(right: 10),
+                  child: Style().textSizeColor(
+                      statusStr, 14, Style().textColor),
+                )
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
   Column buildOrderList(AppDataModel appDataModel) {
     return Column(
       children: orderList.map((e) {
@@ -274,13 +598,13 @@ class DriversState extends State<DriversPage> {
 
           case '2':
             {
-              statusStr = 'โปรดรอรับสินค้าที่ร้านค้า';
+              statusStr = 'ร้านค้ารับ Order แล้ว';
             }
             break;
 
           case '3':
             {
-              statusStr = 'กำลังจัดเตรียมสินค้า';
+              statusStr = 'ร้านค้ากำลังเตรียม';
             }
             break;
 
@@ -327,17 +651,26 @@ class DriversState extends State<DriversPage> {
               children: [
                 Expanded(
                     child: ListTile(
-                  title: Style().textSizeColor(
-                      'order No.' + e.orderId, 14, Style().textColor),
+                  title:
+                      Style().textFlexibleBackSize('order ' + e.orderId, 2, 14),
+                  subtitle: Style().textBlackSize('วันที่ '+e.startTime, 12),
                 )),
-                (e.status == '9')
+                (e.status == '1')
                     ? Container(
                         margin: EdgeInsets.only(right: 10),
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             print('confirm');
-                            _confirmOrder(
-                                context.read<AppDataModel>(), e.orderId);
+                            var result = await Dialogs().confirm(
+                                context,
+                                "รับ Order ?",
+                                "รับ Order " + e.orderId,
+                                Icon(FontAwesomeIcons.question));
+                            print("Resulr = $result");
+                            if (result == true) {
+                              _confirmOrder(
+                                  context.read<AppDataModel>(), e.orderId);
+                            }
                           },
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -364,7 +697,7 @@ class DriversState extends State<DriversPage> {
                                     Container(
                                       margin: EdgeInsets.only(right: 5),
                                       child: ElevatedButton(
-                                        onPressed: () {
+                                        onPressed: () async {
                                           print('cancelOrder By Driver');
                                           _cancelOrder(
                                               context.read<AppDataModel>(),
@@ -386,7 +719,59 @@ class DriversState extends State<DriversPage> {
                                       ),
                                     ),
                                     (e.status == '2')
-                                        ? Container()
+                                        ? Container(
+                                            margin: EdgeInsets.only(
+                                                right: 8, top: 8, bottom: 8),
+                                            child: Column(
+                                              children: [
+                                                Container(
+                                                  margin: EdgeInsets.only(
+                                                      right: 10),
+                                                  child: ElevatedButton(
+                                                    onPressed: () async {
+                                                      var result =
+                                                          await Dialogs().confirm(
+                                                              context,
+                                                              "รับสินค้า",
+                                                              "รับสินค้าที่ร้านค้า",
+                                                              Icon(
+                                                                FontAwesomeIcons
+                                                                    .questionCircle,
+                                                                color: Style()
+                                                                    .darkColor,
+                                                              ));
+                                                      print('Delivering');
+                                                      if (result == true) {
+                                                        _delivering(
+                                                            context.read<
+                                                                AppDataModel>(),
+                                                            e.orderId);
+                                                      }
+                                                    },
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        Style().textSizeColor(
+                                                            'รับสินค้า',
+                                                            14,
+                                                            Colors.white)
+                                                      ],
+                                                    ),
+                                                    style: ElevatedButton.styleFrom(
+                                                        primary:
+                                                            Style().darkColor,
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        5))),
+                                                  ),
+                                                )
+                                              ],
+                                            ),
+                                          )
                                         : Container(
                                             margin: EdgeInsets.only(right: 5),
                                             child: ElevatedButton(
@@ -414,7 +799,7 @@ class DriversState extends State<DriversPage> {
                                                           BorderRadius.circular(
                                                               5))),
                                             ),
-                                          )
+                                          ),
                                   ],
                                 )
                               ],
@@ -430,24 +815,28 @@ class DriversState extends State<DriversPage> {
                                     Container(
                                       margin: EdgeInsets.only(right: 10),
                                       child: ElevatedButton(
-                                        onPressed: () {
-                                          print('Delivering');
-                                          _delivering(
-                                              context.read<AppDataModel>(),
-                                              e.orderId);
+                                        onPressed: () async {
+                                          var result = await Dialogs().confirm(
+                                              context,
+                                              "รับสินค้า",
+                                              "รับสินค้าที่ร้านค้า",
+                                              Icon(
+                                                FontAwesomeIcons.questionCircle,
+                                                color: Style().darkColor,
+                                              ));
+                                          if (result == true) {
+                                            print('Delivering');
+                                            _delivering(
+                                                context.read<AppDataModel>(),
+                                                e.orderId);
+                                          }
                                         },
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
                                             Style().textSizeColor(
-                                                'ออกส่งสินค้า',
-                                                16,
-                                                Colors.white),
-                                            Icon(
-                                              FontAwesomeIcons.arrowRight,
-                                              size: 20,
-                                            )
+                                                'รับสินค้า', 14, Colors.white),
                                           ],
                                         ),
                                         style: ElevatedButton.styleFrom(
@@ -472,7 +861,6 @@ class DriversState extends State<DriversPage> {
       }).toList(),
     );
   }
-
   _orderSuccess(AppDataModel appDataModel, String orderId) async {
     String finishTime = await getTimeStringNow();
     db
@@ -548,12 +936,12 @@ class DriversState extends State<DriversPage> {
     db.collection('orders').doc(orderId).get().then((value) async {
       OrderDetail orderDetail = orderDetailFromJson(jsonEncode(value.data()));
       print('status = ' + orderDetail.status);
-      if (orderDetail.status == '9' && orderDetail.driver == uid) {
+      if (orderDetail.status == '1' ) {
         print('change Status Success');
         db
             .collection('orders')
             .doc(orderId)
-            .update({'status': '2'}).then((value) {
+            .update({'status': '2','driver': uid}).then((value) {
           addLog(orderId, '2', 'driver', uid, '').then((value) {
             setState(() {
               getDriverData = false;

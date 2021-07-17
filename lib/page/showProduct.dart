@@ -32,7 +32,7 @@ class ShowProductState extends State<ShowProductPage> {
 
   ShopModel shopModel;
 
-  bool userDetail = false;
+  bool userDetail;
 
   _getProductData(AppDataModel appDataModel) async {
     for (var product in appDataModel.allProductsData) {
@@ -58,7 +58,8 @@ class ShowProductState extends State<ShowProductPage> {
     print('ShopStatus= ' + shopStatus);
     print('ShopOpen= ' + shopOpen.toString());
 
-    await checkUserDetail(appDataModel.profileUid).then((value) => userDetail = value);
+    await checkUserDetail(appDataModel.profileUid)
+        .then((value) => userDetail = value);
     print("userDetail =" + userDetail.toString());
 
     setState(() {
@@ -75,7 +76,10 @@ class ShowProductState extends State<ShowProductPage> {
                 backgroundColor: Colors.white,
                 bottomOpacity: 0.0,
                 elevation: 0.0,
-                  title: (shopModel == null)? Text("") : Style().textSizeColor(shopModel.shopName, 16, Style().darkColor),
+                title: (shopModel == null)
+                    ? Text("")
+                    : Style().textSizeColor(
+                        shopModel.shopName, 16, Style().darkColor),
                 leading: IconButton(
                     icon: Icon(
                       Icons.arrow_back_ios,
@@ -129,22 +133,20 @@ class ShowProductState extends State<ShowProductPage> {
                   ],
                 ),
                 Container(
-
                   margin: EdgeInsets.all(20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-
-                        width: appDataModel.screenW *0.7,
+                        width: appDataModel.screenW * 0.7,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Style().textSizeColor(
-                                productModel.productName, 18, Style().textColor),
-                            Style().textSizeColor(
-                                productModel.productDetail, 14, Colors.black87)
+                            Style().textFlexibleBackSize(
+                                productModel.productName, 4, 18),
+                            Style().textFlexibleBackSize(
+                                productModel.productDetail, 4, 14)
                           ],
                         ),
                       ),
@@ -164,117 +166,143 @@ class ShowProductState extends State<ShowProductPage> {
                       )
                     ],
                   ),
-                ),(userDetail == false)? Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 20),
-                      child: Style().textSizeColor(
-                          'ท่านกรอกข้อมูลบัญชีไม่ครบ', 16, Colors.redAccent),
-                    ),
-                  ],
-                ) :
-                (shopStatus == "2" || shopStatus == "3" || shopOpen == false)?   Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 20),
-                      child: Style().textSizeColor(
-                          'ร้านปิด', 16, Colors.redAccent),
-                    ),
-                  ],
-                ): Container(
-                  margin: EdgeInsets.all(20),
-                  child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
+                ),
+                (userDetail == false)
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 20),
+                            child: Style().textSizeColor(
+                                'ท่านกรอกข้อมูลบัญชีไม่ครบ',
+                                16,
+                                Colors.redAccent),
+                          ),
+                        ],
+                      )
+                    : (shopStatus == "2" ||
+                            shopStatus == "3" ||
+                            shopOpen == false )
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 20),
+                                child: Style().textSizeColor(
+                                    'ร้านปิด', 16, Colors.redAccent),
+                              ),
+                            ],
+                          )
+                        : (
+                    userDetail == null)? Container() :Container(
+                            margin: EdgeInsets.all(20),
+                            child: Column(
                               children: [
-                                Style().textSizeColor(
-                                    'ข้อความถึงร้านค้า', 16, Style().textColor),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Style().textSizeColor('ข้อความถึงร้านค้า',
+                                        16, Style().textColor),
+                                  ],
+                                ),
+                                Container(
+                                  margin: EdgeInsets.only(top: 10),
+                                  width: appDataModel.screenW * 0.9,
+                                  height: 40,
+                                  child: TextField(
+                                    style: TextStyle(fontSize: 14),
+                                    keyboardType: TextInputType.emailAddress,
+                                    decoration: InputDecoration(
+                                        enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                            borderSide: BorderSide(
+                                                color: Style().labelColor)),
+                                        focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                            borderSide: BorderSide(
+                                                color: Style().labelColor)),
+                                        hintText: 'ไม่ระบุก็ได้',
+                                        hintStyle: TextStyle(
+                                            fontSize: 10,
+                                            fontFamily: "prompt")),
+                                    controller: _comment,
+                                  ),
+                                )
                               ],
                             ),
-                            Container(
-                              margin: EdgeInsets.only(top: 10),
-                              width: appDataModel.screenW * 0.9,
-                              height: 40,
-                              child: TextField(
-                                style: TextStyle(fontSize: 14),
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: InputDecoration(
-                                    enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(5),
-                                        borderSide: BorderSide(
-                                            color: Style().labelColor)),
-                                    focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(5),
-                                        borderSide: BorderSide(
-                                            color: Style().labelColor)),
-                                    hintText: 'ไม่ระบุก็ได้',
-                                    hintStyle: TextStyle(
-                                        fontSize: 10, fontFamily: "prompt")),
-                                controller: _comment,
-                              ),
-                            )
-                          ],
+                          )
+              ],
+            ),
+          ),
+          (shopStatus == "2" ||
+                  shopStatus == "3" ||
+                  shopOpen == false ||
+                  userDetail == false ||
+              userDetail == null)
+              ? Container()
+              : Container(
+                  padding: EdgeInsets.all(8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.remove_circle,
+                          color: Colors.red,
                         ),
-                )
-              ],
-            ),
-          ),
-          (shopStatus == "2" || shopStatus == "3" || shopOpen == false || userDetail == false)? Container() :  Container(
-            padding: EdgeInsets.all(8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.remove_circle,
-                    color: Colors.red,
+                        onPressed: () => setState(() {
+                          final newValue = pcs - 1;
+                          pcs = newValue.clamp(0, 50);
+                        }),
+                      ),
+                      Style()
+                          .textSizeColor(pcs.toString(), 18, Style().textColor),
+                      IconButton(
+                        icon: Icon(
+                          Icons.add_circle,
+                          color: Colors.green,
+                        ),
+                        onPressed: () => setState(() {
+                          final newValue = pcs + 1;
+                          pcs = newValue.clamp(0, 50);
+                        }),
+                      ),
+                    ],
                   ),
-                  onPressed: () => setState(() {
-                    final newValue = pcs - 1;
-                    pcs = newValue.clamp(0, 50);
-                  }),
                 ),
-                Style().textSizeColor(pcs.toString(), 18, Style().textColor),
-                IconButton(
-                  icon: Icon(
-                    Icons.add_circle,
-                    color: Colors.green,
-                  ),
-                  onPressed: () => setState(() {
-                    final newValue = pcs + 1;
-                    pcs = newValue.clamp(0, 50);
-                  }),
-                ),
-              ],
-            ),
-          ),
-          (shopStatus == "2" || shopStatus == "3" || shopOpen == false || userDetail == false)? Container() : Container(
-            width: appDataModel.screenW * 0.9,
-            child: ElevatedButton(
-              onPressed: () {
-                _addOrder(context.read<AppDataModel>());
-                appDataModel.allPcs = 0;
-                appDataModel.allPrice = 0;
-                for (CartModel orderItem in appDataModel.currentOrder) {
-                  int sumPrice =
-                      int.parse(orderItem.pcs) * int.parse(orderItem.price);
+          (shopStatus == "2" ||
+                  shopStatus == "3" ||
+                  shopOpen == false ||
+                  userDetail == false ||
+                  userDetail == null)
+              ? Container()
+              : Container(
+                  width: appDataModel.screenW * 0.9,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _addOrder(context.read<AppDataModel>());
+                      appDataModel.allPcs = 0;
+                      appDataModel.allPrice = 0;
+                      for (CartModel orderItem in appDataModel.currentOrder) {
+                        int sumPrice = int.parse(orderItem.pcs) *
+                            int.parse(orderItem.price);
 
-                  appDataModel.allPcs += int.parse(orderItem.pcs);
-                  appDataModel.allPrice += sumPrice;
-                }
-              },
-              child: Style().titleH3('เพิ่มใส่รถเข็น - ' +
-                  (int.parse(productModel.productPrice) * pcs).toString() +
-                  ' ฿'),
-              style: ElevatedButton.styleFrom(
-                  primary: Style().primaryColor,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5))),
-            ),
-          )
+                        appDataModel.allPcs += int.parse(orderItem.pcs);
+                        appDataModel.allPrice += sumPrice;
+                      }
+                    },
+                    child: Style().titleH3('เพิ่มใส่รถเข็น - ' +
+                        (int.parse(productModel.productPrice) * pcs)
+                            .toString() +
+                        ' ฿'),
+                    style: ElevatedButton.styleFrom(
+                        primary: Style().primaryColor,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5))),
+                  ),
+                )
         ],
       );
 

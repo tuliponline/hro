@@ -1,7 +1,9 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:hro/page/addProduct.dart';
+import 'package:hro/page/adminOrder.dart';
 import 'package:hro/page/adminPage.dart';
+import 'package:hro/page/adminSendNotify.dart';
 import 'package:hro/page/allProducts.dart';
 import 'package:hro/page/driverSetup.dart';
 import 'package:hro/page/drivers.dart';
@@ -16,8 +18,10 @@ import 'package:hro/page/orderDetail.dart';
 import 'package:hro/page/orderList.dart';
 import 'package:hro/page/orderShow.dart';
 import 'package:hro/page/profile.dart';
+import 'package:hro/page/rating4customer.dart';
 import 'package:hro/page/register.dart';
 import 'package:hro/page/shop.dart';
+import 'package:hro/page/shopReview.dart';
 import 'package:hro/page/shopSetup.dart';
 import 'package:hro/page/showProduct.dart';
 import 'package:hro/page/splash.dart';
@@ -86,6 +90,18 @@ class MyApp extends StatelessWidget {
           "/addProduct-page": (context) => AddProductPage(),
           "/editProduct-page": (context) => EditProductPage(),
           "/loadMore-page": (context) => ListScreen(),
+          "/Rating4Customer-page": (context) => Rating4Customer(),
+          "/shopReview-page": (context) => ShopReviewPage(),
+          "/adminSendNotify-page": (context) =>   AdminSendNotifyPage(),
+          "/adminOrder-page": (context) =>   AdminOrderPage(),
+
+
+
+
+
+
+
+
 
 
 

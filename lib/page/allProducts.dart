@@ -166,59 +166,63 @@ class AllProductState extends State<AllProductsPage> {
                 children: [
                   (e.productStatus == "0")
                       ? Container()
-                      : Container(
-                          color: Colors.white,
-                          margin: EdgeInsets.only(bottom: 5),
-                          child: Container(
-                            margin: EdgeInsets.only(left: 10, bottom: 8),
-                            height: 100,
+                      : InkWell(onTap: (){
+                    appDataModel.productSelectId =
+                        e.productId;
+                    Navigator.pushNamed(context, "/showProduct-page");
+                  },child:  Container(
+                    color: Colors.white,
+                    margin: EdgeInsets.only(bottom: 5),
+                    child: Container(
+                      margin: EdgeInsets.only(left: 10, bottom: 8),
+                      height: 100,
 
-                            //color: Colors.green,
-                            child: Row(
-                              children: [
-                                Container(
-                                  height: 100,
-                                  width: 100,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    color: Colors.white,
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(5.0),
-                                    child: FadeInImage.assetNetwork(
-                                      fit: BoxFit.fitHeight,
-                                      placeholder: 'assets/images/loading.gif',
-                                      image: _productsData[i].productPhotoUrl,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                    child: Container(
-                                  padding: EdgeInsets.all(8),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Style().textFlexibleBackSize(
-                                          _productsData[i].productName, 2, 14),
-                                      Style().textFlexibleBackSize(
-                                          'รายละเอียด : ' +
-                                              _productsData[i].productName,
-                                          2,
-                                          12),
-                                      Style().textSizeColor(
-                                          'ราคา : ' +
-                                              _productsData[i].productPrice +
-                                              " ฿",
-                                          14,
-                                          Style().darkColor),
-                                    ],
-                                  ),
-                                ))
-                              ],
+                      //color: Colors.green,
+                      child: Row(
+                        children: [
+                          Container(
+                            height: 100,
+                            width: 100,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              color: Colors.white,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(5.0),
+                              child: FadeInImage.assetNetwork(
+                                fit: BoxFit.fitHeight,
+                                placeholder: 'assets/images/loading.gif',
+                                image: _productsData[i].productPhotoUrl,
+                              ),
                             ),
                           ),
-                        ),
+                          Expanded(
+                              child: Container(
+                                padding: EdgeInsets.all(8),
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Style().textFlexibleBackSize(
+                                        _productsData[i].productName, 2, 14),
+                                    Style().textFlexibleBackSize(
+                                        'รายละเอียด : ' +
+                                            _productsData[i].productName,
+                                        2,
+                                        12),
+                                    Style().textSizeColor(
+                                        'ราคา : ' +
+                                            _productsData[i].productPrice +
+                                            " ฿",
+                                        14,
+                                        Style().darkColor),
+                                  ],
+                                ),
+                              ))
+                        ],
+                      ),
+                    ),
+                  ),),
                 ],
               );
             }).toList(),
@@ -277,7 +281,7 @@ class AllProductState extends State<AllProductsPage> {
                                         _shopsData[i].shopType, 10),
                                   ],
                                 ),
-                                paddingShopOpen(_shopsData[i].shopTime),
+                                paddingShopOpen(_shopsData[i].shopTime,_shopsData[i].shopStatus),
                               ],
                             ),
                           ),
@@ -291,33 +295,36 @@ class AllProductState extends State<AllProductsPage> {
         : Container();
   }
 
-  paddingShopOpen(String shopTime) {
+  paddingShopOpen(String shopTime,String shopStatus) {
     bool shopOpen = false;
-    var now = DateTime.now();
-    int dayNum = now.weekday;
-    List<String> statusTimeAll = shopTime.split(",");
-    for (int i = 0; i < statusTimeAll.length - 1; i++) {
-      if (dayNum == i + 1) {
-        List<String> statusTime = statusTimeAll[i].split("/");
-        if (statusTime[0] == "close") {
-          shopOpen = false;
-        } else {
-          List<String> openClose = statusTime[1].split('-');
-          List<String> openHM = openClose[0].split(':');
-          List<String> closeHM = openClose[1].split(':');
-          final startTime = DateTime(now.year, now.month, now.day,
-              int.parse(openHM[0]), int.parse(openHM[1]));
-          final endTime = DateTime(now.year, now.month, now.day,
-              int.parse(closeHM[0]), int.parse(closeHM[1]));
-          // final startTime = DateTime(now.year, now.month, now.day, 01, 0);
-          // final endTime = DateTime(now.year, now.month, now.day, 23,0);
-          final currentTime = DateTime.now();
-          (currentTime.isAfter(startTime) && currentTime.isBefore(endTime))
-              ? shopOpen = true
-              : shopOpen = false;
+    if (shopStatus  == "1"){
+      var now = DateTime.now();
+      int dayNum = now.weekday;
+      List<String> statusTimeAll = shopTime.split(",");
+      for (int i = 0; i < statusTimeAll.length - 1; i++) {
+        if (dayNum == i + 1) {
+          List<String> statusTime = statusTimeAll[i].split("/");
+          if (statusTime[0] == "close") {
+            shopOpen = false;
+          } else {
+            List<String> openClose = statusTime[1].split('-');
+            List<String> openHM = openClose[0].split(':');
+            List<String> closeHM = openClose[1].split(':');
+            final startTime = DateTime(now.year, now.month, now.day,
+                int.parse(openHM[0]), int.parse(openHM[1]));
+            final endTime = DateTime(now.year, now.month, now.day,
+                int.parse(closeHM[0]), int.parse(closeHM[1]));
+            // final startTime = DateTime(now.year, now.month, now.day, 01, 0);
+            // final endTime = DateTime(now.year, now.month, now.day, 23,0);
+            final currentTime = DateTime.now();
+            (currentTime.isAfter(startTime) && currentTime.isBefore(endTime))
+                ? shopOpen = true
+                : shopOpen = false;
+          }
         }
       }
     }
+
     print("shopOpen = " + shopOpen.toString());
     return Padding(
       padding: const EdgeInsets.only(top: 8),

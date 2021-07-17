@@ -35,7 +35,7 @@ class OrderList {
   String inTime;
   String driver;
   String customerId;
-  dynamic comment;
+  String comment;
   String startTime;
   String location;
   String shopId;
@@ -110,7 +110,7 @@ class OrderDetail {
   String inTime;
   String driver;
   String customerId;
-  dynamic comment;
+  String comment;
   String startTime;
   String location;
   String shopId;

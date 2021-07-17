@@ -55,6 +55,8 @@ class ProfileState extends State<ProfilePage> {
   Dialogs dialogs = Dialogs();
 
   _setDataProfile(AppDataModel appDataModel) {
+    print("uid=" + appDataModel.profileUid);
+
     _nameController.text = appDataModel.profileName;
     _phoneController.text = appDataModel.profilePhone;
     _emailController.text = appDataModel.profileEmail;

@@ -10,52 +10,44 @@ String productsModelToJson(List<ProductsModel> data) => json.encode(List<dynamic
 
 class ProductsModel {
   ProductsModel({
+    this.productPhotoUrl,
+    this.productTime,
+    this.productDetail,
     this.productId,
     this.shopUid,
-    this.productName,
-    this.productPhotoUrl,
-    this.productDetail,
-    this.productPrice,
-    this.productTime,
     this.productStatus,
-    this.shopName,
-    this.shopLocation,
+    this.productPrice,
+    this.productName,
   });
 
+  String productPhotoUrl;
+  String productTime;
+  String productDetail;
   String productId;
   String shopUid;
-  String productName;
-  String productPhotoUrl;
-  String productDetail;
-  String productPrice;
-  String productTime;
   String productStatus;
-  String shopName;
-  String shopLocation;
+  String productPrice;
+  String productName;
 
   factory ProductsModel.fromJson(Map<String, dynamic> json) => ProductsModel(
+    productPhotoUrl: json["product_photoUrl"],
+    productTime: json["product_time"],
+    productDetail: json["product_detail"],
     productId: json["product_id"],
     shopUid: json["shop_uid"],
-    productName: json["product_name"],
-    productPhotoUrl: json["product_photoUrl"],
-    productDetail: json["product_detail"],
-    productPrice: json["product_price"],
-    productTime: json["product_time"],
     productStatus: json["product_status"],
-    shopName: json["shop_name"] == null ? null : json["shop_name"],
-    shopLocation: json["shop_location"] == null ? null : json["shop_location"],
+    productPrice: json["product_price"],
+    productName: json["product_name"],
   );
 
   Map<String, dynamic> toJson() => {
+    "product_photoUrl": productPhotoUrl,
+    "product_time": productTime,
+    "product_detail": productDetail,
     "product_id": productId,
     "shop_uid": shopUid,
-    "product_name": productName,
-    "product_photoUrl": productPhotoUrl,
-    "product_detail": productDetail,
-    "product_price": productPrice,
-    "product_time": productTime,
     "product_status": productStatus,
-    "shop_name": shopName == null ? null : shopName,
-    "shop_location": shopLocation == null ? null : shopLocation,
+    "product_price": productPrice,
+    "product_name": productName,
   };
 }

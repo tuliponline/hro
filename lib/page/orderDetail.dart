@@ -7,12 +7,15 @@ import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/appStatusModel.dart';
 import 'package:hro/model/cartModel.dart';
 import 'package:hro/model/driverModel.dart';
+import 'package:hro/model/userModel.dart';
 import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/addLog.dart';
 import 'package:hro/utility/checkDriverOnline.dart';
 import 'package:hro/utility/getAddressName.dart';
+import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/snapshot2list.dart';
 import 'package:hro/utility/style.dart';
+import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 
@@ -24,6 +27,8 @@ class OrderDetailPage extends StatefulWidget {
 }
 
 class OrderDetailState extends State<OrderDetailPage> {
+  FirebaseFirestore db = FirebaseFirestore.instance;
+
   Dialogs dialogs = Dialogs();
   String addressComment;
   String addressName;
@@ -35,6 +40,8 @@ class OrderDetailState extends State<OrderDetailPage> {
   String token;
 
   int riderOnline = 0;
+  int riderFree = 0;
+
   bool checkRiderOnline = false;
   List<DriversListModel> driverListModel;
 
@@ -42,7 +49,11 @@ class OrderDetailState extends State<OrderDetailPage> {
   bool customerOpen = false;
   String dateOpen = '';
 
+  bool inService;
+
   _getRiderOnline(AppDataModel appDataModel) async {
+    riderOnline = 0;
+    riderFree = 0;
     await FirebaseFirestore.instance
         .collection('appstatus')
         .doc('001')
@@ -57,41 +68,49 @@ class OrderDetailState extends State<OrderDetailPage> {
           "/" +
           dateOpenRow.year.toString();
 
-      DateTime dateRow = DateTime.parse(appStatusModel.customerOpen);
-      var now =   DateTime.now();
-      var expirationDate =  DateTime(dateRow.year, dateRow.month, dateRow.day);
-       bool customerOpen;
-       customerOpen =  expirationDate.isBefore(now);
-
-      print("customerOpen = " + customerOpen.toString());
+      (appStatusModel.customerOpen == "1")
+          ? customerOpen = true
+          : customerOpen = false;
 
       riderOnline = 0;
       await FirebaseFirestore.instance
           .collection('drivers')
-          .where('driverStatus', isEqualTo: '1')
           .get()
           .then((value) async {
         var jsonData = await setList2Json(value);
-        if (jsonData == "[]") {
-          riderOnline = 0;
-        } else {
-          print('drivers data = ' + jsonData);
-          driverListModel = driversListModelFromJson(jsonData);
+        driverListModel = driversListModelFromJson(jsonData);
 
-          driverListModel.forEach((e) {
+        driverListModel.forEach((element) {
+          DriversModel driversModel = driversModelFromJson(jsonEncode(element));
+          if (driversModel.driverStatus == "1" ||
+              driversModel.driverStatus == "2" ||
+              driversModel.driverStatus == "9") {
             riderOnline += 1;
-          });
-        }
+            if (driversModel.driverStatus == "1") riderFree += 1;
+          }
+        });
+
+        print("riderOnline " + riderOnline.toString());
+        print("riderFree " + riderFree.toString());
+
         _calData(context.read<AppDataModel>());
       });
     });
   }
 
   Future<Null> _calData(AppDataModel appDataModel) async {
-    List<String> locationLatLng = appDataModel.profileLocation.split(',');
-    double lat = double.parse(locationLatLng[0]);
-    double lng = double.parse(locationLatLng[1]);
+    print("startCallData");
+
+    LocationData locationData = await getLocationData();
+    double lat = locationData.latitude;
+    double lng = locationData.longitude;
+
     addressName = await getAddressName(lat, lng);
+    print("Get Now LocationCallData");
+
+    inService = await checkLocationLimit(appDataModel.latStart,
+        appDataModel.lngStart, lat, lng, appDataModel.distanceLimit);
+    print("inService = " + inService.toString());
 
     amount = appDataModel.allPrice;
     if (appDataModel.allPcs == 1) {
@@ -138,80 +157,123 @@ class OrderDetailState extends State<OrderDetailPage> {
                             buildOrderDetail(context.read<AppDataModel>()),
                             Container(
                               width: appDataModel.screenW * 0.9,
-                              child: (customerOpen == false)
+                              child: (inService == false)
                                   ? ElevatedButton(
                                       onPressed: () async {
-                                        await checkDriverOnlineFunction()
-                                            .then((value) {
-                                          print(value);
-                                        });
+                                        //_getOrder(context.read<AppDataModel>());
                                       },
-                                      child: Style().titleH3(
-                                          'เปิดบริการวันที่ ' + dateOpen),
+                                      child: Style().textBlackSize(
+                                          "ท่านอยู่นอกพื้นที่ให้บริการ เกิน " +
+                                              appDataModel.distanceLimit
+                                                  .toString() +
+                                              " กม.",
+                                          14),
                                       style: ElevatedButton.styleFrom(
-                                          primary: Colors.grey,
+                                          primary: Colors.yellow,
                                           shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(5))),
                                     )
-                                  : (appDataModel.shopOpen == true)
-                                      ? (riderOnline == 0)
-                                          ? ElevatedButton(
-                                              onPressed: () {
-                                              },
-                                              child: Style().titleH3(
-                                                  'ไม่มี Rider Online'),
-                                              style: ElevatedButton.styleFrom(
-                                                  primary: Colors.grey,
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              5))),
-                                            )
-                                          : ElevatedButton(
-                                              onPressed: () async {
-                                                await checkDriverOnlineFunction()
-                                                    .then((value) {
-                                                  if (value == true) {
-                                                    _addOrder(context
-                                                        .read<AppDataModel>());
-                                                  } else {
-                                                    dialogs.information(
-                                                        context,
-                                                        Style().textBlackSize(
-                                                            "ไม่มี Rider Online",
-                                                            16),
-                                                        Style().textBlackSize(
-                                                            "โปรดสั่งใหม่ภายหลัง",
-                                                            16));
-                                                  }
-                                                });
-
-                                                //_getOrder(context.read<AppDataModel>());
-                                              },
-                                              child: Style().titleH3(
-                                                  'สั่งซื้อ ' +
-                                                      (amount + costDelivery)
-                                                          .toString() +
-                                                      ' ฿'),
-                                              style: ElevatedButton.styleFrom(
-                                                  primary: Style().primaryColor,
-                                                  shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              5))),
-                                            )
-                                      : ElevatedButton(
-                                          onPressed: () {},
-                                          child: Style().titleH3(
-                                              'ร้านปิด ไม่สามารถสั่งอาหารได้'),
+                                  : (customerOpen == false)
+                                      ? ElevatedButton(
+                                          onPressed: () async {
+                                            await checkDriverOnlineFunction()
+                                                .then((value) {
+                                              print(value);
+                                            });
+                                          },
+                                          child: Style()
+                                              .titleH3('ปิดให้บริการชั่วคราว'),
                                           style: ElevatedButton.styleFrom(
                                               primary: Colors.grey,
                                               shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                           5))),
-                                        ),
+                                        )
+                                      : (appDataModel.shopOpen == true)
+                                          ? (riderOnline == 0)
+                                              ? ElevatedButton(
+                                                  onPressed: () {},
+                                                  child: Style().textBlackSize(
+                                                      'ไม่มี Rider Online โปรดสั่งใหม่ภายหลัง',
+                                                      14),
+                                                  style: ElevatedButton.styleFrom(
+                                                      primary:
+                                                          Colors.grey.shade200,
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          5))),
+                                                )
+                                              : ElevatedButton(
+                                                  onPressed: () async {
+                                                    await checkDriverOnlineFunction()
+                                                        .then((value) async {
+                                                      if (value == true) {
+                                                        if (riderFree > 0) {
+                                                          _addOrder(context.read<
+                                                              AppDataModel>());
+                                                        } else {
+                                                          var result =
+                                                              await Dialogs().confirm(
+                                                                  context,
+                                                                  "Rider คิวเต็ม",
+                                                                  "ใช้เวลานานกว่าปกติ",
+                                                                  Icon(
+                                                                    FontAwesomeIcons
+                                                                        .clock,
+                                                                    color: Colors
+                                                                        .deepOrange,
+                                                                  ));
+                                                          if (result != null &&
+                                                              result == true)
+                                                            _addOrder(context.read<
+                                                                AppDataModel>());
+                                                        }
+                                                      } else {
+                                                        dialogs.information(
+                                                            context,
+                                                            Style().textBlackSize(
+                                                                "ไม่มี Rider Online",
+                                                                16),
+                                                            Style().textBlackSize(
+                                                                "โปรดสั่งใหม่ภายหลัง",
+                                                                16));
+                                                      }
+                                                    });
+
+                                                    //_getOrder(context.read<AppDataModel>());
+                                                  },
+                                                  child: Style().titleH3(
+                                                      'สั่งซื้อ ' +
+                                                          (amount +
+                                                                  costDelivery)
+                                                              .toString() +
+                                                          ' ฿'),
+                                                  style: ElevatedButton.styleFrom(
+                                                      primary:
+                                                          Style().primaryColor,
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          5))),
+                                                )
+                                          : ElevatedButton(
+                                              onPressed: () {},
+                                              child: Style().titleH3(
+                                                  'ร้านปิด ไม่สามารถสั่งอาหารได้'),
+                                              style: ElevatedButton.styleFrom(
+                                                  primary: Colors.grey,
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              5))),
+                                            ),
                             ),
                           ],
                         ),
@@ -246,8 +308,11 @@ class OrderDetailState extends State<OrderDetailPage> {
                       child: ListTile(
                     title: (e.productName?.isEmpty ?? true)
                         ? Text('')
-                        : Style().textSizeColor(
-                            e.productName, 16, Style().textColor),
+                        : Style().textFlexibleBackSize(
+                            e.productName,
+                            2,
+                            14,
+                          ),
                     subtitle: (e.comment?.isEmpty ?? true)
                         ? Text('')
                         : Style()
@@ -290,7 +355,7 @@ class OrderDetailState extends State<OrderDetailPage> {
                     Style()
                         .textSizeColor('$costDelivery ฿', 14, Style().textColor)
                   ],
-                )
+                ),
               ],
             ),
           )
@@ -318,9 +383,8 @@ class OrderDetailState extends State<OrderDetailPage> {
                   child: ListTile(
                 title: (addressName?.isEmpty ?? true)
                     ? Text('')
-                    : Style().textSizeColor(addressName, 16, Style().textColor),
-                subtitle:
-                    Style().textSizeColor(addressName, 12, Style().textColor),
+                    : Style().textFlexibleBackSize(addressName, 2, 14),
+                subtitle: Style().textFlexibleBackSize(addressName, 2, 10),
               )),
               // IconButton(icon: Icon(Icons.navigate_next), onPressed: () {})
             ],
@@ -432,25 +496,23 @@ class OrderDetailState extends State<OrderDetailPage> {
     });
   }
 
-  _getDriver() async {
-    await FirebaseFirestore.instance
-        .collection('drivers')
-        .where('driverStatus', isEqualTo: '1')
-        .orderBy('onlineTime', descending: false)
-        .limit(1)
-        .get()
-        .then((value) {
-      var jsonData = jsonEncode(value.docs[0].data());
-      DriversModel driversModel = driversModelFromJson(jsonData);
-      print(driversModel.driverAddress);
-      token = driversModel.token;
-    }).catchError((onError) {
-      print(onError.toString());
-    });
-  }
-
   _getTimeStamp() {
     String dateString = DateTime.now().millisecondsSinceEpoch.toString();
     return dateString;
   }
+
+  sendNotify(AppDataModel appDataModel, String token, String title,
+      String body) async {
+    print("notiserver = " + appDataModel.notifyServer);
+    http.post(
+      Uri.parse(appDataModel.notifyServer),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(
+          <String, String>{'token': token, 'title': title, 'body': body}),
+    );
+  }
+
+
 }

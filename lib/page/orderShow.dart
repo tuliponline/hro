@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/driverModel.dart';
@@ -61,7 +62,7 @@ class OrderShowState extends State<OrderShowPage> {
         .then((value) async {
       print('orderDetail = ' + value.data().toString());
       orderDetail = orderDetailFromJson(jsonEncode(value.data()));
-      if (orderDetail.status == '1') {
+      if (orderDetail.status == '1' || orderDetail.status == '9') {
         _textIconChoice.add(TextIconItem("ยกเลิก Order", MdiIcons.cancel));
       }
       String status = orderDetail.status;
@@ -159,22 +160,12 @@ class OrderShowState extends State<OrderShowPage> {
                       child: Container(
                         child: Column(
                           children: [
-                            Container(
-                              margin: EdgeInsets.only(top: 3),
-                              height: 150,
-                              child: PageView(
-                                pageSnapping: true,
-                                physics: ClampingScrollPhysics(),
-                                controller: PageController(
-                                  initialPage: 0,
-                                  viewportFraction: 0.9,
-                                ),
-                                onPageChanged: (int page) {
-                                  setState(() {});
-                                },
-                                children: <Widget>[
-                                  Container(
-                                    margin: EdgeInsets.only(bottom: 8, top: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    margin: EdgeInsets.only(
+                                        bottom: 8, top: 8, right: 10, left: 10),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius:
@@ -188,193 +179,237 @@ class OrderShowState extends State<OrderShowPage> {
                                       ],
                                     ),
                                     padding: EdgeInsets.only(left: 16),
-                                    child: Container(
-                                      padding: EdgeInsets.only(
-                                          left: 8,
-                                          top: 16,
-                                          bottom: 16,
-                                          right: 8),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceAround,
-                                        children: <Widget>[
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: <Widget>[
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: <Widget>[
-                                                  Style().textBlackSize(
-                                                      "Order: " +
-                                                          orderDetail.orderId,
-                                                      12),
-                                                  Style().textBlackSize(
-                                                      "วันที่สั่ง: " +
-                                                          orderDetail.startTime,
-                                                      12),
-                                                  Style().textBlackSize(
-                                                      "ร้าน: " +
-                                                          shopModel.shopName +
-                                                          ' ' +
-                                                          shopModel.shopPhone,
-                                                      12),
-                                                  (driversModel == null)
-                                                      ? Container()
-                                                      : Style().textBlackSize(
-                                                          "พนักงานส่ง: " +
-                                                              driversModel
-                                                                  .driverName +
-                                                              ' ' +
-                                                              driversModel
-                                                                  .driverPhone,
-                                                          12)
-                                                ],
-                                              ),
-                                              (orderDetail.status == '1')
-                                                  ? Container(
-                                                      child: PopupMenuButton(
-                                                        onSelected:
-                                                            (choice) async {
-                                                          print(choice.text);
-                                                          if (choice.text ==
-                                                              'ยกเลิก Order') {
-                                                            if (orderDetail
-                                                                    .status ==
-                                                                '1') {
-                                                              var result = await dialogs
-                                                                  .inputDialog(
-                                                                      context,
-                                                                      Style().textBlackSize(
-                                                                          'ยกเลิก Order',
-                                                                          14),
-                                                                      'โปรดระบุเหตุผล');
-                                                              print(result[0]);
-                                                              if (result[0] ==
-                                                                  true) {
-                                                                print('OK' +
-                                                                    result[1]
-                                                                        .toString());
-
-                                                                await fireDb
-                                                                    .collection(
-                                                                        'orders')
-                                                                    .doc(orderDetail
-                                                                        .orderId)
-                                                                    .update({
-                                                                  'status': '0'
-                                                                }).then(
-                                                                        (value) async {
-                                                                  await addLog(
-                                                                          orderDetail
-                                                                              .orderId,
-                                                                          '0',
-                                                                          'user',
-                                                                          appDataModel
-                                                                              .profileUid,
-                                                                          result[
-                                                                              1])
-                                                                      .then(
-                                                                          (value) {
-                                                                    Navigator.pop(
-                                                                        context,
-                                                                        'reload');
-                                                                  }).catchError(
-                                                                          (onError) {
-                                                                    print(
-                                                                        'addLogError = $onError');
-                                                                  });
-                                                                }).catchError(
-                                                                        (onError) {
-                                                                  print(
-                                                                      'ChangeStatusError = $onError');
-                                                                });
-                                                              }
-                                                            } else {
-                                                              Toast.show(
-                                                                  "ทำรายการไม่ได้",
-                                                                  context,
-                                                                  duration: Toast
-                                                                      .LENGTH_SHORT,
-                                                                  gravity: Toast
-                                                                      .CENTER);
-                                                            }
-                                                          }
-                                                        },
-                                                        itemBuilder:
-                                                            (BuildContext
-                                                                context) {
-                                                          return _textIconChoice
-                                                              .map((TextIconItem
-                                                                  choice) {
-                                                            return PopupMenuItem(
-                                                              value: choice,
-                                                              child: Row(
-                                                                children: (choice
-                                                                            .text ==
-                                                                        'ยกเลิก Order')
-                                                                    ? <Widget>[
-                                                                        Icon(
-                                                                          choice
-                                                                              .iconData,
-                                                                          size:
-                                                                              18,
-                                                                          color:
-                                                                              Colors.red,
-                                                                        ),
-                                                                        Padding(
-                                                                            padding:
-                                                                                EdgeInsets.only(left: 8),
-                                                                            child: Text(
-                                                                              choice.text,
-                                                                            )),
-                                                                      ]
-                                                                    : <Widget>[
-                                                                        Icon(
-                                                                            choice
-                                                                                .iconData,
-                                                                            size:
-                                                                                18),
-                                                                        Padding(
-                                                                            padding:
-                                                                                EdgeInsets.only(left: 8),
-                                                                            child: Text(
-                                                                              choice.text,
-                                                                            )),
-                                                                      ],
-                                                              ),
-                                                            );
-                                                          }).toList();
-                                                        },
-                                                        icon: Icon(
-                                                          MdiIcons.dotsVertical,
-                                                        ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Container(
+                                            padding: EdgeInsets.only(
+                                                left: 8,
+                                                top: 16,
+                                                bottom: 16,
+                                                right: 8),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceAround,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Style().textFlexibleBackSize(
+                                                              "Order: " +
+                                                                  orderDetail
+                                                                      .orderId,
+                                                              2,
+                                                              12),
+                                                          Style().textFlexibleBackSize(
+                                                              "วันที่สั่ง: " +
+                                                                  orderDetail
+                                                                      .startTime,
+                                                              2,
+                                                              12),
+                                                          Style().textFlexibleBackSize(
+                                                              "ร้าน: " +
+                                                                  shopModel
+                                                                      .shopName +
+                                                                  ' ' +
+                                                                  shopModel
+                                                                      .shopPhone,
+                                                              2,
+                                                              12),
+                                                          (driversModel == null)
+                                                              ? Container()
+                                                              : Style().textFlexibleBackSize(
+                                                                  "พนักงานส่ง: " +
+                                                                      driversModel
+                                                                          .driverName +
+                                                                      ' ' +
+                                                                      driversModel
+                                                                          .driverPhone,
+                                                                  2,
+                                                                  12)
+                                                        ],
                                                       ),
-                                                    )
-                                                  : Container(),
-                                            ],
+                                                    ),
+                                                    (orderDetail.status ==
+                                                                '1' ||
+                                                            orderDetail
+                                                                    .status ==
+                                                                '9')
+                                                        ? Container(
+                                                            child:
+                                                                PopupMenuButton(
+                                                              onSelected:
+                                                                  (choice) async {
+                                                                print(choice
+                                                                    .text);
+                                                                if (choice
+                                                                        .text ==
+                                                                    'ยกเลิก Order') {
+                                                                  if (orderDetail
+                                                                              .status ==
+                                                                          '1' ||
+                                                                      orderDetail
+                                                                              .status ==
+                                                                          '9') {
+                                                                    print("test");
+                                                                    var result = await dialogs.inputDialog(
+                                                                        context,
+                                                                        Style().textBlackSize(
+                                                                            'ยกเลิก Order',
+                                                                            14),
+                                                                        'โปรดระบุเหตุผล');
+                                                                    print(
+                                                                        result[
+                                                                            0]);
+                                                                    if (result[
+                                                                            0] ==
+                                                                        true) {
+                                                                      print('OK' +
+                                                                          result[1]
+                                                                              .toString());
+
+                                                                      await fireDb
+                                                                          .collection(
+                                                                              'orders')
+                                                                          .doc(orderDetail
+                                                                              .orderId)
+                                                                          .update({
+                                                                        'status':
+                                                                            '0'
+                                                                      }).then(
+                                                                              (value) async {
+                                                                        await addLog(orderDetail.orderId, '0', 'user', appDataModel.profileUid, result[1]).then(
+                                                                            (value) {
+                                                                          Navigator.pop(
+                                                                              context,
+                                                                              'reload');
+                                                                        }).catchError(
+                                                                            (onError) {
+                                                                          print(
+                                                                              'addLogError = $onError');
+                                                                        });
+                                                                      }).catchError(
+                                                                              (onError) {
+                                                                        print(
+                                                                            'ChangeStatusError = $onError');
+                                                                      });
+                                                                    }
+                                                                  } else {
+                                                                    Toast.show(
+                                                                        "ทำรายการไม่ได้",
+                                                                        context,
+                                                                        duration:
+                                                                            Toast
+                                                                                .LENGTH_SHORT,
+                                                                        gravity:
+                                                                            Toast.CENTER);
+                                                                  }
+                                                                }else{print("text+" + orderDetail.status );}
+                                                              },
+                                                              itemBuilder:
+                                                                  (BuildContext
+                                                                      context) {
+                                                                return _textIconChoice.map(
+                                                                    (TextIconItem
+                                                                        choice) {
+                                                                  return PopupMenuItem(
+                                                                    value:
+                                                                        choice,
+                                                                    child: Row(
+                                                                      children: (choice.text ==
+                                                                              'ยกเลิก Order')
+                                                                          ? <Widget>[
+                                                                              Icon(
+                                                                                choice.iconData,
+                                                                                size: 18,
+                                                                                color: Colors.red,
+                                                                              ),
+                                                                              Padding(
+                                                                                  padding: EdgeInsets.only(left: 8),
+                                                                                  child: Text(
+                                                                                    choice.text,
+                                                                                  )),
+                                                                            ]
+                                                                          : <Widget>[
+                                                                              Icon(choice.iconData, size: 18),
+                                                                              Padding(
+                                                                                  padding: EdgeInsets.only(left: 8),
+                                                                                  child: Text(
+                                                                                    choice.text,
+                                                                                  )),
+                                                                            ],
+                                                                    ),
+                                                                  );
+                                                                }).toList();
+                                                              },
+                                                              icon: Icon(
+                                                                MdiIcons
+                                                                    .dotsVertical,
+                                                              ),
+                                                            ),
+                                                          )
+                                                        : Container(),
+                                                  ],
+                                                ),
+                                                Row(
+                                                  children: <Widget>[
+                                                    Style().textBlackSize(
+                                                        'สถานะ: ', 14),
+                                                    Style().textSizeColor(
+                                                        statusString,
+                                                        14,
+                                                        Style().darkColor),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                          Row(
-                                            children: <Widget>[
-                                              Style()
-                                                  .textBlackSize('สถานะ: ', 14),
-                                              Style().textSizeColor(
-                                                  statusString,
-                                                  14,
-                                                  Style().darkColor),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
+                                        ),
+                                        IconButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                appDataModel.orderIdSelected =
+                                                    orderDetail.orderId;
+                                                if (orderDetail.comment != null)
+                                                  appDataModel
+                                                          .orderAddressComment =
+                                                      orderDetail.comment;
+                                                print(orderDetail.location);
+                                                List<String> locationLatLng =
+                                                    orderDetail.location
+                                                        .split(',');
+                                                appDataModel.latOrder =
+                                                    double.parse(
+                                                        locationLatLng[0]);
+                                                appDataModel.lngOrder =
+                                                    double.parse(
+                                                        locationLatLng[1]);
+
+                                                Navigator.pushNamed(context,
+                                                    "/order2driver-page");
+                                              });
+                                            },
+                                            icon: Icon(
+                                                FontAwesomeIcons.arrowRight))
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
+                                )
+                              ],
                             ),
                             (logsList == null)
                                 ? Container()

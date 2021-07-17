@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hro/model/AppDataModel.dart';
@@ -33,7 +35,7 @@ class Order2DriverState extends State<Order2DriverPage> {
   double shopLat, shopLng, customerLat, customerLng;
 
   bool showAddress = false;
-  String shopName,customerName,shopPhone,customerPhone;
+  String shopName, customerName, shopPhone, customerPhone;
 
   _getData(AppDataModel appDataModel) async {
     orderIdSelect = appDataModel.orderIdSelected;
@@ -53,7 +55,6 @@ class Order2DriverState extends State<Order2DriverPage> {
             .doc(orderDetail.shopId)
             .get()
             .then((shopValue) async {
-
           ShopModel shopModel = shopModelFromJson(jsonEncode(shopValue.data()));
           shopName = shopModel.shopName;
           shopPhone = shopModel.shopPhone;
@@ -78,8 +79,6 @@ class Order2DriverState extends State<Order2DriverPage> {
           customerLat = appDataModel.latOrder;
           customerLng = appDataModel.lngOrder;
 
-
-
           customerAddress = await getAddressName(customerLat, customerLng);
           print('CustomerAddress = ' + customerAddress);
           setState(() {
@@ -99,28 +98,40 @@ class Order2DriverState extends State<Order2DriverPage> {
               appBar: (orderProduct == null)
                   ? null
                   : AppBar(
-                      iconTheme:
-                          IconThemeData(color: Style().darkColor),
+                      iconTheme: IconThemeData(color: Style().darkColor),
                       backgroundColor: Colors.white,
                       bottomOpacity: 0.0,
                       elevation: 0.0,
-                      title: Style().textSizeColor(
-                          'รายการสินค้า', 18, Style().darkColor),
+                      title: Style()
+                          .textSizeColor('ข้อมูล Order', 18, Style().darkColor),
                     ),
               body: Container(
                 child: (orderProduct == null)
                     ? Style()
                         .circularProgressIndicator(Style().drivePrimaryColor)
                     : SingleChildScrollView(
-                      child: Column(
+                        child: Column(
                           children: [
                             Container(
+                              margin: EdgeInsets.only(left: 10),
                               color: Colors.white,
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
-                                  Style().textSizeColor('Order No.$orderIdSelect',
-                                      14, Style().textColor),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Style().textSizeColor(
+                                          'Order $orderIdSelect',
+                                          14,
+                                          Style().textColor),
+                                      Style().textSizeColor(
+                                          'วันที่ ' + orderDetail.startTime,
+                                          12,
+                                          Style().textColor)
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -159,14 +170,15 @@ class Order2DriverState extends State<Order2DriverPage> {
                                   if (showAddress == true)
                                     buildCustomerAddress(
                                         context.read<AppDataModel>()),
-                                  buildProductDetail(),
+                                  buildProductDetail(
+                                      context.read<AppDataModel>()),
                                   buildAmount()
                                 ],
                               ),
                             ),
                           ],
                         ),
-                    ),
+                      ),
               ),
             ));
   }
@@ -190,16 +202,27 @@ class Order2DriverState extends State<Order2DriverPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Style().textSizeColor('รวมค่าสินค้า', 16, Style().textColor),
-              Style().textSizeColor('$amount ฿', 16, Style().textColor)
+              Style().textSizeColor('รวมค่าสินค้า', 14, Style().textColor),
+              Style().textSizeColor('$amount ฿', 14, Style().textColor)
             ],
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Style().textSizeColor('ค่าส่ง', 16, Style().textColor),
+              Style().textSizeColor('ค่าส่ง', 14, Style().textColor),
               Style().textSizeColor(
-                  orderDetail.costDelivery + ' ฿', 16, Style().textColor)
+                  orderDetail.costDelivery + ' ฿', 14, Style().textColor)
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Style().textSizeColor('รวม', 16, Style().textColor),
+              Style().textSizeColor(
+                  (int.parse(orderDetail.costDelivery) + amount).toString() +
+                      " ฿",
+                  16,
+                  Style().darkColor)
             ],
           )
         ],
@@ -207,7 +230,7 @@ class Order2DriverState extends State<Order2DriverPage> {
     );
   }
 
-  Container buildProductDetail() {
+  Container buildProductDetail(AppDataModel appDataModel) {
     return Container(
       margin: EdgeInsets.only(top: 5, right: 10),
       child: Column(
@@ -223,19 +246,43 @@ class Order2DriverState extends State<Order2DriverPage> {
               )),
           Column(
             children: orderProduct.map((e) {
+              String productDetail = "";
+              appDataModel.allProductsData.forEach((element) {
+                if (e.productId == element.productId) {
+                  productDetail = element.productDetail;
+                }
+              });
+
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                      child: ListTile(
-                    title: (e.name?.isEmpty ?? true)
-                        ? Text('')
-                        : Style().textSizeColor(e.name, 14, Style().textColor),
-                    subtitle: (e.comment?.isEmpty ?? true)
-                        ? Text('')
-                        : Style()
-                            .textSizeColor(e.comment, 12, Style().textColor),
-                  )),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          title: (e.name?.isEmpty ?? true)
+                              ? Text('')
+                              : Style().textFlexibleBackSize(e.name, 2, 14),
+                          subtitle: (productDetail?.isEmpty ?? true)
+                              ? Text('')
+                              : Style().textFlexibleColorSize(
+                                  productDetail,
+                                  2,
+                                  12,
+                                  Style().textColor,
+                                ),
+                        ),
+                        (e.comment?.isEmpty ?? true)
+                            ? Container()
+                            : Container(margin: EdgeInsets.only(left: 10),child: Style().textFlexibleColorSize(
+                          e.comment,
+                          2,
+                          12,
+                          Style().textColor,
+                        ),),
+                      ],
+                    ),
+                  ),
                   Column(
                     children: [
                       Style().textSizeColor(
@@ -243,8 +290,9 @@ class Order2DriverState extends State<Order2DriverPage> {
                               ' ฿',
                           14,
                           Style().textColor),
-                      Style().textSizeColor(
-                          'จำนวน x ' + e.pcs, 12, Style().darkColor)
+                    Row(children: [  Style().textSizeColor(
+                        e.price+" ฿", 12, Style().darkColor),Style().textSizeColor(
+                        '/จำนวน x ' + e.pcs, 12, Style().darkColor)],)
                     ],
                   )
                 ],
@@ -260,11 +308,29 @@ class Order2DriverState extends State<Order2DriverPage> {
     return Container(
       padding: EdgeInsets.all(5),
       margin: EdgeInsets.only(top: 3),
-      color: Colors.white,
+      color: Colors.grey.shade200,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Style().textSizeColor('ร้านค้า : ' + shopName + " โทร" + shopPhone, 14, Style().textColor),
+          Row(
+            children: [
+              Expanded(
+                child: Style().textFlexibleBackSize(
+                  'ร้านค้า : ' + shopName + " โทร " + shopPhone,
+                  2,
+                  14,
+                ),
+              ),
+              IconButton(
+                  onPressed: () {
+                    _callNumber(shopPhone);
+                  },
+                  icon: Icon(
+                    Icons.call,
+                    color: Style().darkColor,
+                  ))
+            ],
+          ),
           Row(
             children: [
               IconButton(
@@ -278,32 +344,48 @@ class Order2DriverState extends State<Order2DriverPage> {
                   child: ListTile(
                 title: (shopAddressName?.isEmpty ?? true)
                     ? Text('')
-                    : Style()
-                        .textSizeColor(shopAddressName, 14, Style().textColor),
+                    : Style().textFlexibleBackSize(shopAddressName, 2, 14),
               )),
               // IconButton(icon: Icon(Icons.navigate_next), onPressed: () {})
             ],
           ),
           (shopLat == null || shopLng == null)
               ? Center(
-            child: Style().circularProgressIndicator(Style().darkColor),
-          )
-              : showMapShop(shopLat,shopLng,shopName),
+                  child: Style().circularProgressIndicator(Style().darkColor),
+                )
+              : showMapShop(shopLat, shopLng, shopName),
         ],
       ),
     );
   }
 
   Container buildCustomerAddress(AppDataModel appDataModel) {
-
     return Container(
       padding: EdgeInsets.all(10),
       margin: EdgeInsets.only(top: 3),
-      color: Colors.white,
+      color: Colors.grey.shade200,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Style().textSizeColor('ลูกค้า : ' + customerName + " โทร" + customerPhone, 14, Style().textColor),
+          Row(
+            children: [
+              Expanded(
+                child: Style().textFlexibleBackSize(
+                  'ลูกค้า : ' + customerName + " โทร" + customerPhone,
+                  2,
+                  14,
+                ),
+              ),
+              IconButton(
+                  onPressed: () {
+                    _callNumber(customerPhone);
+                  },
+                  icon: Icon(
+                    Icons.call,
+                    color: Style().darkColor,
+                  ))
+            ],
+          ),
           Row(
             children: [
               IconButton(
@@ -317,23 +399,24 @@ class Order2DriverState extends State<Order2DriverPage> {
                   child: ListTile(
                 title: (customerAddress?.isEmpty ?? true)
                     ? Text('')
-                    : Style()
-                        .textSizeColor(customerAddress, 14, Style().textColor),
-                    subtitle: Text(appDataModel.orderAddressComment),
+                    : Style().textFlexibleBackSize(customerAddress, 2, 14),
+                subtitle: Style().textFlexibleColorSize(
+                    appDataModel.orderAddressComment, 2, 12, Colors.red),
               )),
               // IconButton(icon: Icon(Icons.navigate_next), onPressed: () {})
             ],
-          ), (customerLat == null )
+          ),
+          (customerLat == null)
               ? Center(
-            child: Style().circularProgressIndicator(Style().darkColor),
-          )
-              : showMapShop(customerLat,customerLng,customerName),
+                  child: Style().circularProgressIndicator(Style().darkColor),
+                )
+              : showMapShop(customerLat, customerLng, customerName),
         ],
       ),
     );
   }
 
-  Container showMapShop(double lat,double lng,String name) {
+  Container showMapShop(double lat, double lng, String name) {
     print("shopLng" + shopLng.toString());
     LatLng firstLocation = LatLng(lat, lng);
     CameraPosition cameraPosition = CameraPosition(
@@ -349,10 +432,11 @@ class Order2DriverState extends State<Order2DriverPage> {
           initialCameraPosition: cameraPosition,
           mapType: MapType.normal,
           onMapCreated: (controller) {},
-          markers: shopMarker(lat,lng,name),
+          markers: shopMarker(lat, lng, name),
         ));
   }
-  Set<Marker> shopMarker(double lat,double lng,String name) {
+
+  Set<Marker> shopMarker(double lat, double lng, String name) {
     return <Marker>[
       Marker(
           markerId: MarkerId('youMarker'),
@@ -361,4 +445,7 @@ class Order2DriverState extends State<Order2DriverPage> {
     ].toSet();
   }
 
+  _callNumber(String number) async {
+    bool res = await FlutterPhoneDirectCaller.callNumber(number);
+  }
 }

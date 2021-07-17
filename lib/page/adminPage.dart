@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:collection/src/iterable_extensions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:hro/model/allShopModel.dart';
 import 'package:hro/model/driverModel.dart';
 import 'package:hro/model/productModel.dart';
 import 'package:hro/model/productsModel.dart';
+import 'package:hro/model/shopModel.dart';
 import 'package:hro/model/userModel.dart';
 import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/snapshot2list.dart';
@@ -60,7 +62,7 @@ class AdminState extends State<AdminPage> {
         _getCustomer();
       } else if (_selectedIndex == 1) {
         pageName = "shop";
-        _getShop();
+        _getShop(context.read<AppDataModel>());
       } else if (_selectedIndex == 2) {
         _getDriver();
         pageName = "Rider";
@@ -78,7 +80,7 @@ class AdminState extends State<AdminPage> {
       print(jsonData);
       allUserDataRow = allUserModelFromJson(jsonData);
       allUserData = allUserDataRow;
-      allUserData.forEach((element) {
+      await allUserData.forEach((element) {
         showDetail.add(false);
       });
       showCount = allUserData.length;
@@ -90,13 +92,14 @@ class AdminState extends State<AdminPage> {
     });
   }
 
-  _getShop() async {
+  _getShop(AppDataModel appDataModel) async {
     showDetail = [];
     db.collection("shops").get().then((value) async {
       var jsonData = await setList2Json(value);
       print(jsonData);
       allShopDataRow = allShopModelFromJson(jsonData);
       allShopData = allShopDataRow;
+      appDataModel.allShopAdminList = allShopData;
       allShopData.forEach((element) {
         showDetail.add(false);
       });
@@ -120,28 +123,36 @@ class AdminState extends State<AdminPage> {
         showDetail.add(false);
       });
       showCount = allDriverData.length;
-      print("showShopDetail = " + showDetail[0].toString());
       setState(() {
-        print("setState");
         setData = true;
       });
     });
   }
 
   _getProduct() async {
+    // await db.collection("products")
+    //     .where('product_status', isEqualTo: 3)
+    //     .get()
+    //     .then((value) {
+    //   value.docs.forEach((element) {
+    //     print('element' + element.data().toString());
+    //   });
+    // });
+
+    print("product");
     showDetail = [];
-    db.collection("products").get().then((value) async {
+    await db.collection("products").get().then((value) async {
       var jsonData = await setList2Json(value);
-      print(jsonData);
+
       allProductDataRow = productsModelFromJson(jsonData);
       allProductData = allProductDataRow;
+      print("allProductDataRow" + allProductDataRow.length.toString());
       allProductData.forEach((element) {
         showDetail.add(false);
       });
       showCount = allProductData.length;
-      print("showShopDetail = " + showDetail[0].toString());
+      print("EndProduct");
       setState(() {
-        print("setState");
         setData = true;
       });
     });
@@ -152,9 +163,13 @@ class AdminState extends State<AdminPage> {
   }
 
   _productWaite() async {
+    showDetail = [];
     allProductData = allProductDataRow
         .where((element) => (element.productStatus).contains('3'))
         .toList();
+    allProductData.forEach((element) {
+      showDetail.add(false);
+    });
     setState(() {});
   }
 
@@ -164,7 +179,7 @@ class AdminState extends State<AdminPage> {
     if (setData == false && _selectedIndex == 0) {
       _getCustomer();
     } else if (setData == false && _selectedIndex == 1) {
-      _getShop();
+      _getShop(context.read<AppDataModel>());
     } else if (setData == false && _selectedIndex == 2) {
       _getDriver();
     } else if (setData == false && _selectedIndex == 3) {
@@ -182,7 +197,22 @@ class AdminState extends State<AdminPage> {
                     .textDarkAppbar(pageName + " " + showCount.toString()),
                 actions: [
                   (_selectedIndex == 0)
-                      ? (Container())
+                      ? Row(
+                          children: [
+                            IconButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                      context, "/adminOrder-page");
+                                },
+                                icon: Icon(FontAwesomeIcons.cartArrowDown)),
+                            IconButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                      context, "/adminSendNotify-page");
+                                },
+                                icon: Icon(FontAwesomeIcons.comment))
+                          ],
+                        )
                       : Container(
                           child: Container(
                             margin: EdgeInsets.only(right: 5),
@@ -229,7 +259,8 @@ class AdminState extends State<AdminPage> {
                                     ? buildShopList()
                                     : (_selectedIndex == 2)
                                         ? buildDriverList()
-                                        : buildProductList()
+                                        : buildProductList(
+                                            context.read<AppDataModel>())
                           ],
                         ),
                       ),
@@ -275,12 +306,15 @@ class AdminState extends State<AdminPage> {
   buildCustomerList() {
     return Container(
       // margin: EdgeInsets.all(8),
-      child: (allUserData == null && showDetail.length > 0)
-          ? Style().circularProgressIndicator(Style().darkColor)
+      child: (allUserData == null || showDetail.length != allUserData.length)
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Style().circularProgressIndicator(Style().darkColor),
+              ],
+            )
           : Column(
-              children: allUserData.map((e) {
-                int index = allUserData.indexOf(e);
-                print(index);
+              children: allUserData.mapIndexed((int index, e) {
                 return Container(
                   color: Colors.white,
                   margin: EdgeInsets.only(top: 5),
@@ -289,23 +323,25 @@ class AdminState extends State<AdminPage> {
                     children: [
                       Row(
                         children: [
-                          Container(
-                            margin: EdgeInsets.only(right: 10, left: 10),
-                            height: 40,
-                            width: 40,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(5),
-                              color: Colors.white,
-                              image: DecorationImage(
-                                fit: BoxFit.fitHeight,
-                                image: NetworkImage(e.photoUrl),
-                              ),
-                            ),
-                          ),
+                          (showDetail[index] == true)
+                              ? Container()
+                              : Container(
+                                  margin: EdgeInsets.only(right: 10, left: 10),
+                                  height: 40,
+                                  width: 40,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(5),
+                                    color: Colors.white,
+                                    image: DecorationImage(
+                                      fit: BoxFit.fitHeight,
+                                      image: NetworkImage(e.photoUrl),
+                                    ),
+                                  ),
+                                ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Style().textBlackSize(e.name, 16),
+                              Style().textBlackSize(e.name, 14),
                               (showDetail[index] == false)
                                   ? Container()
                                   : Container(
@@ -313,6 +349,21 @@ class AdminState extends State<AdminPage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
+                                          Container(
+                                            margin: EdgeInsets.only(
+                                                right: 10, left: 10),
+                                            height: 180,
+                                            width: 180,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(5),
+                                              color: Colors.white,
+                                              image: DecorationImage(
+                                                fit: BoxFit.fitHeight,
+                                                image: NetworkImage(e.photoUrl),
+                                              ),
+                                            ),
+                                          ),
                                           Style().textBlackSize(
                                               "email : " + e.email, 14),
                                           (e.phone == null)
@@ -365,7 +416,7 @@ class AdminState extends State<AdminPage> {
   buildShopList() {
     return Container(
       // margin: EdgeInsets.all(8),
-      child: (allShopData == null && showDetail.length > 0)
+      child: (allShopData == null || showDetail.length != allShopData.length)
           ? Style().circularProgressIndicator(Style().darkColor)
           : Column(
               children: allShopData.map((e) {
@@ -428,7 +479,7 @@ class AdminState extends State<AdminPage> {
                                       ),
                                 Row(
                                   children: [
-                                    Style().textBlackSize(e.shopName, 16),
+                                    Style().textBlackSize(e.shopName, 14),
                                     (e.shopStatus == "3")
                                         ? Container(
                                             margin: EdgeInsets.only(left: 5),
@@ -521,8 +572,7 @@ class AdminState extends State<AdminPage> {
                                                 ? Style().textBlackSize(
                                                     "type : ", 14)
                                                 : Style().textBlackSize(
-                                                    "status : " +
-                                                        e.shopLocation,
+                                                    "status : " + e.shopStatus,
                                                     14),
                                             (e.shopUid == null)
                                                 ? Style()
@@ -560,7 +610,8 @@ class AdminState extends State<AdminPage> {
   buildDriverList() {
     return Container(
       // margin: EdgeInsets.all(8),
-      child: (allDriverData == null && showDetail.length > 0)
+      child: (allDriverData == null ||
+              showDetail.length != allDriverData.length)
           ? Style().circularProgressIndicator(Style().darkColor)
           : Column(
               children: allDriverData.map((e) {
@@ -624,7 +675,7 @@ class AdminState extends State<AdminPage> {
                                       ),
                                 Row(
                                   children: [
-                                    Style().textBlackSize(e.driverName, 16),
+                                    Style().textBlackSize(e.driverName, 14),
                                     (e.driverStatus == "3")
                                         ? Container(
                                             margin: EdgeInsets.only(left: 5),
@@ -700,6 +751,9 @@ class AdminState extends State<AdminPage> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Style().textBlackSize(
+                                                "Status = " + e.driverStatus,
+                                                14),
+                                            Style().textBlackSize(
                                                 e.driverAddress, 14),
                                             (e.driverPhone == null)
                                                 ? Style()
@@ -747,14 +801,23 @@ class AdminState extends State<AdminPage> {
     );
   }
 
-  buildProductList() {
+  buildProductList(AppDataModel appDataModel) {
     return Container(
-      // margin: EdgeInsets.all(8),
-      child: (allProductData == null && showDetail.length > 0)
+      child: (allProductData == null ||
+              showDetail.length != allProductData.length)
           ? Style().circularProgressIndicator(Style().darkColor)
           : Column(
               children: allProductData.map((e) {
                 int index = allProductData.indexOf(e);
+                String shopName = "";
+
+                appDataModel.allShopAdminList.forEach((element) {
+                  ShopModel shopModel = shopModelFromJson(jsonEncode(element));
+                  if (shopModel.shopUid == e.shopUid) {
+                    shopName = shopModel.shopName;
+                  }
+                });
+
                 print(index);
                 return Container(
                   color: Colors.white,
@@ -816,7 +879,10 @@ class AdminState extends State<AdminPage> {
                                       ),
                                 Row(
                                   children: [
-                                    Style().textBlackSize(e.productName, 16),
+                                    (e.productName == null)
+                                        ? Container()
+                                        : Style()
+                                            .textBlackSize(e.productName, 14),
                                     (e.productStatus == "3")
                                         ? Container(
                                             margin: EdgeInsets.only(left: 5),
@@ -896,6 +962,7 @@ class AdminState extends State<AdminPage> {
                                                 : Style().textBlackSize(
                                                     "เวลา : " + e.productTime,
                                                     14),
+                                            Style().textBlackSize(shopName, 14),
                                             (e.productId == null)
                                                 ? Style()
                                                     .textBlackSize("uid : ", 14)
@@ -923,11 +990,11 @@ class AdminState extends State<AdminPage> {
                                                     onPressed: () async {
                                                       var result = await Dialogs()
                                                           .confirm(
-                                                          context,
-                                                          "ลบสินค้า",
-                                                          "ยืนยัน ลบสินค้า",
-                                                          Icon(Icons
-                                                              .warning_sharp));
+                                                              context,
+                                                              "ลบสินค้า",
+                                                              "ยืนยัน ลบสินค้า",
+                                                              Icon(Icons
+                                                                  .warning_sharp));
                                                       if (result != null &&
                                                           result == true) {
                                                         _deleteProduct(
@@ -1023,7 +1090,7 @@ class AdminState extends State<AdminPage> {
       await db
           .collection("products")
           .doc(productID)
-          .update({"product_status": 3}).then((value) async {
+          .update({"product_status": "3"}).then((value) async {
         await Dialogs().information(
           context,
           Style().textBlackSize("สำเร็จ", 16),

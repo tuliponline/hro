@@ -118,10 +118,7 @@ class ShopState extends State<ShopPage> {
         //      message.notification.body);
         print(message.notification.title);
 
-        print("nowPage = " + ModalRoute
-            .of(context)
-            .settings
-            .name);
+        print("nowPage = " + ModalRoute.of(context).settings.name);
 
         if (message.notification.title.contains('Shop')) {
           print('Shop');
@@ -143,151 +140,147 @@ class ShopState extends State<ShopPage> {
     if (getData == false) _setData(context.read<AppDataModel>());
 
     return Consumer<AppDataModel>(
-        builder: (context, appDataModel, child) =>
-            Scaffold(
-                appBar: (shopModel == null)
-                    ? null
-                    : AppBar(
-                  iconTheme: IconThemeData(color: Style().darkColor),
-                  backgroundColor: Colors.white,
-                  bottomOpacity: 0.0,
-                  elevation: 0.0,
-                  // leading: IconButton(
-                  //     icon: Icon(
-                  //       Icons.menu,
-                  //       color: Style().darkColor,
-                  //     ),
-                  //     onPressed: () {}),
-                  title:
-                  Style().textSizeColor('ร้านค้า', 18, Style().darkColor),
-                  actions: [
-                    IconButton(
-                        icon: Icon(
-                          FontAwesomeIcons.sync,
-                          color: Style().darkColor,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            getData = false;
-                          });
-                        }),
-
-                    Container(
-                      child: Container(
-                        margin: EdgeInsets.only(right: 5),
-                        padding: EdgeInsets.all(1),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushNamed(context, "/menu-page");
-                              },
-                              child: Style().textSizeColor(
-                                  'สินค้า', 14, Colors.white),
-                              style: ElevatedButton.styleFrom(
-                                  primary: Style().darkColor,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                      BorderRadius.circular(5))),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Container(
-                      child: Container(
-                        margin: EdgeInsets.only(right: 5),
-                        padding: EdgeInsets.all(1),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushNamed(context, "/shopSetup-page");
-                              },
-                              child: Style().textSizeColor(
-                                  'ข้อมูลร้าน', 14, Colors.white),
-                              style: ElevatedButton.styleFrom(
-                                  primary: Style().darkColor,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                      BorderRadius.circular(5))),
-                            ),
-                          ],
+        builder: (context, appDataModel, child) => Scaffold(
+            appBar: (shopModel == null)
+                ? null
+                : AppBar(
+                    iconTheme: IconThemeData(color: Style().darkColor),
+                    backgroundColor: Colors.white,
+                    bottomOpacity: 0.0,
+                    elevation: 0.0,
+                    // leading: IconButton(
+                    //     icon: Icon(
+                    //       Icons.menu,
+                    //       color: Style().darkColor,
+                    //     ),
+                    //     onPressed: () {}),
+                    title:
+                        Style().textSizeColor('ร้านค้า', 18, Style().darkColor),
+                    actions: [
+                      IconButton(
+                          icon: Icon(
+                            FontAwesomeIcons.sync,
+                            color: Style().darkColor,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              getData = false;
+                            });
+                          }),
+                      Container(
+                        child: Container(
+                          margin: EdgeInsets.only(right: 5),
+                          padding: EdgeInsets.all(1),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(context, "/menu-page");
+                                },
+                                child: Style()
+                                    .textSizeColor('สินค้า', 14, Colors.white),
+                                style: ElevatedButton.styleFrom(
+                                    primary: Style().darkColor,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(5))),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    )
-                  ],
-                ),
-                body: (shopModel == null)
-                    ? Style().circularProgressIndicator(Style().darkColor)
-                    : Container(
-                  color: Colors.grey.shade200,
-                  child: Center(
-                    child: ListView(
-                      children: [
-                        Column(
-                          // mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            (orderList == null)
-                                ? Container()
-                                : buildShopStatus(
-                                context.read<AppDataModel>()),
-                            (orderList == null || orderList.length == 0)
-                                ? Column(
-                              mainAxisAlignment:
-                              MainAxisAlignment.center,
-                              children: [
-                                Center(
-                                  child: Style().textSizeColor(
-                                      "ไม่มี Order",
-                                      16,
-                                      Colors.black87),
-                                ),
-                              ],
-                            )
-                                : buildOrderList(context.read<AppDataModel>())
-
-                            //buildPopularProduct(),
-                            //buildPopularShop((context.read<AppDataModel>()))
-                          ],
+                      Container(
+                        child: Container(
+                          margin: EdgeInsets.only(right: 5),
+                          padding: EdgeInsets.all(1),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                      context, "/shopSetup-page");
+                                },
+                                child: Style().textSizeColor(
+                                    'ข้อมูลร้าน', 14, Colors.white),
+                                style: ElevatedButton.styleFrom(
+                                    primary: Style().darkColor,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(5))),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      )
+                    ],
+                  ),
+            body: (shopModel == null)
+                ? Style().circularProgressIndicator(Style().darkColor)
+                : Container(
+                    color: Colors.grey.shade200,
+                    child: Center(
+                      child: ListView(
+                        children: [
+                          Column(
+                            // mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              (orderList == null)
+                                  ? Container()
+                                  : buildShopStatus(
+                                      context.read<AppDataModel>()),
+                              (orderList == null || orderList.length == 0)
+                                  ? Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Center(
+                                          child: Style().textSizeColor(
+                                              "ไม่มี Order",
+                                              16,
+                                              Colors.black87),
+                                        ),
+                                      ],
+                                    )
+                                  : buildOrderList(context.read<AppDataModel>())
+
+                              //buildPopularProduct(),
+                              //buildPopularShop((context.read<AppDataModel>()))
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+            bottomNavigationBar: BottomNavigationBar(
+              items: const <BottomNavigationBarItem>[
+                BottomNavigationBarItem(
+                  icon: Icon(
+                    FontAwesomeIcons.clock,
+                    color: Colors.orangeAccent,
+                  ),
+                  title: Text(
+                    'กำลังดำเนินการ',
+                    style: TextStyle(fontFamily: 'prompt', fontSize: 12),
+                  ),
                 ),
-                bottomNavigationBar: BottomNavigationBar(
-                  items: const <BottomNavigationBarItem>[
-                    BottomNavigationBarItem(
-                      icon: Icon(
-                        FontAwesomeIcons.clock,
-                        color: Colors.orangeAccent,
-                      ),
-                      title: Text(
-                        'กำลังดำเนินการ',
-                        style: TextStyle(fontFamily: 'prompt', fontSize: 12),
-                      ),
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(
-                        FontAwesomeIcons.check,
-                        color: Colors.lightGreen,
-                      ),
-                      title: Text(
-                        'Rider รับสินค้าแล้ว',
-                        style: TextStyle(fontFamily: 'prompt', fontSize: 12),
-                      ),
-                    ),
-                  ],
-                  currentIndex: _selectedIndex,
-                  selectedItemColor: Theme
-                      .of(context)
-                      .primaryColor,
-                  unselectedItemColor: Colors.grey,
-                  onTap: _onItemTapped,
-                )));
+                BottomNavigationBarItem(
+                  icon: Icon(
+                    FontAwesomeIcons.check,
+                    color: Colors.lightGreen,
+                  ),
+                  title: Text(
+                    'Rider รับสินค้าแล้ว',
+                    style: TextStyle(fontFamily: 'prompt', fontSize: 12),
+                  ),
+                ),
+              ],
+              currentIndex: _selectedIndex,
+              selectedItemColor: Theme.of(context).primaryColor,
+              unselectedItemColor: Colors.grey,
+              onTap: _onItemTapped,
+            )));
   }
 
   void _onItemTapped(int index) {
@@ -362,28 +355,27 @@ class ShopState extends State<ShopPage> {
                       children: [
                         Expanded(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ListTile(
-                                  title: Style().textSizeColor(
-                                      'order No.' + e.orderId,
-                                      14,
-                                      Style().textColor),
-                                  subtitle: Style().textSizeColor(
-                                      statusStr,
-                                      14,
-                                      (e.status == '0' ||
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              title: Style().textFlexibleBackSize(
+                                  'order ' + e.orderId, 2, 14),
+                              subtitle: Style().textSizeColor(
+                                  statusStr,
+                                  14,
+                                  (e.status == '0' ||
                                           e.status == '5' ||
                                           e.status == '6')
-                                          ? Style().textColor
-                                          : (e.status == "2")
+                                      ? Style().textColor
+                                      : (e.status == "2")
                                           ? Colors.deepOrange
                                           : (e.status == "3")
-                                          ? Colors.orangeAccent
-                                          : Style().darkColor),
-                                )
-                              ],
-                            )),
+                                              ? Colors.orangeAccent
+                                              : Style().darkColor),
+                            ),
+                            Style().textBlackSize(e.startTime, 10)
+                          ],
+                        )),
                         IconButton(
                             onPressed: () {
                               orderSelected = e.orderId;
@@ -408,9 +400,9 @@ class ShopState extends State<ShopPage> {
                     ),
                     (showDetail[index] == true)
                         ? (orderProduct == null)
-                        ? Style().circularProgressIndicator(
-                        Style().shopPrimaryColor)
-                        : showDetailList(e.orderId, e.status)
+                            ? Style().circularProgressIndicator(
+                                Style().shopPrimaryColor)
+                            : showDetailList(e.orderId, e.status,context.read<AppDataModel>())
                         : Container()
                   ],
                 ),
@@ -440,7 +432,7 @@ class ShopState extends State<ShopPage> {
 
               case '2':
                 {
-                  statusStr = 'รอการตอบรับ โปรดตอบรับOrder';
+                  statusStr = 'โปรดยืนยันOrder';
                 }
                 break;
 
@@ -483,28 +475,28 @@ class ShopState extends State<ShopPage> {
                       children: [
                         Expanded(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ListTile(
-                                  title: Style().textSizeColor(
-                                      'order No.' + e.orderId,
-                                      14,
-                                      Style().textColor),
-                                  subtitle: Style().textSizeColor(
-                                      statusStr,
-                                      14,
-                                      (e.status == '0' ||
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListTile(
+                              title: Style().textSizeColor(
+                                  'order No.' + e.orderId,
+                                  14,
+                                  Style().textColor),
+                              subtitle: Style().textSizeColor(
+                                  statusStr,
+                                  14,
+                                  (e.status == '0' ||
                                           e.status == '5' ||
                                           e.status == '6')
-                                          ? Style().textColor
-                                          : (e.status == "2")
+                                      ? Style().textColor
+                                      : (e.status == "2")
                                           ? Colors.deepOrange
                                           : (e.status == "3")
-                                          ? Colors.orangeAccent
-                                          : Style().darkColor),
-                                )
-                              ],
-                            )),
+                                              ? Colors.orangeAccent
+                                              : Style().darkColor),
+                            )
+                          ],
+                        )),
                         IconButton(
                             onPressed: () {
                               orderSelected = e.orderId;
@@ -529,9 +521,9 @@ class ShopState extends State<ShopPage> {
                     ),
                     (showDetail[index] == true)
                         ? (orderProduct == null)
-                        ? Style().circularProgressIndicator(
-                        Style().shopPrimaryColor)
-                        : showDetailList(e.orderId, e.status)
+                            ? Style().circularProgressIndicator(
+                                Style().shopPrimaryColor)
+                            : showDetailList(e.orderId, e.status,context.read<AppDataModel>())
                         : Container()
                   ],
                 ),
@@ -545,33 +537,44 @@ class ShopState extends State<ShopPage> {
     );
   }
 
-  showDetailList(String orderIdSelect, String orderStatus) {
+  showDetailList(
+      String orderIdSelect, String orderStatus, AppDataModel appDataModel) {
     return Column(
       children: [
         Column(
             children: orderProduct.map((e) {
-              return Row(
+          print('comment' + e.comment);
+          String productDetail;
+          appDataModel.allProductsData.forEach((element) {
+            if (e.productId == element.productId)
+              productDetail = element.productDetail;
+          });
+
+          return Row(
+            children: [
+              Expanded(
+                  child: Column(
                 children: [
-                  Expanded(
-                      child: ListTile(
-                        title: Style().textBlackSize(e.name, 14),
-                        subtitle: Style().textBlackSize(e.comment, 12),
-                      )),
-                  Column(
-                    children: [
-                      Style().textSizeColor(
-                          (int.parse(e.pcs) * int.parse(e.price)).toString() +
-                              ' ฿',
-                          14,
-                          Style().textColor),
-                      Style()
-                          .textSizeColor(
-                          'จำนวน x ' + e.pcs, 12, Style().darkColor)
-                    ],
-                  )
+                  ListTile(
+                    title: Style().textFlexibleBackSize(e.name, 2, 14),
+                    subtitle: (productDetail == null)? Text("") :Style().textFlexibleBackSize(productDetail, 2, 12),
+                  ),(e.comment == null)? Container() :Style().textFlexibleColorSize(e.comment, 2, 12,Colors.red)
                 ],
-              );
-            }).toList()),
+              )),
+              Column(
+                children: [
+                  Style().textSizeColor(
+                      (int.parse(e.pcs) * int.parse(e.price)).toString() + ' ฿',
+                      14,
+                      Style().textColor),
+                 Row(children: [ Style()
+                     .textSizeColor( e.price, 12, Style().darkColor), Style()
+                     .textSizeColor(' ฿/จำนวน x ' + e.pcs, 12, Style().darkColor)],)
+                ],
+              )
+            ],
+          );
+        }).toList()),
         buildAmount(),
         (orderStatus == '2') ? buildConfirmMenu() : Container()
       ],
@@ -581,52 +584,72 @@ class ShopState extends State<ShopPage> {
   buildConfirmMenu() {
     return Container(
         child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Row(
-            children: [
-              Container(
-                margin: EdgeInsets.only(right: 5),
-                child: ElevatedButton(
-                  onPressed: () {
-                    print('cancelOrder By Shop');
-                    _cancelOrder(context.read<AppDataModel>(), orderSelected);
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Style().textSizeColor('ยกเลิก', 14, Colors.white),
-                    ],
-                  ),
-                  style: ElevatedButton.styleFrom(
-                      primary: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5))),
-                ),
-              )
-            ],
-          ),
-          Row(
-            children: [
-              Container(
-                margin: EdgeInsets.only(right: 5),
-                child: ElevatedButton(
-                  onPressed: () {
-                    _conFirmOrder(context.read<AppDataModel>(), orderSelected);
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Style().textSizeColor('ยืนยัน', 14, Colors.white),
-                    ],
-                  ),
-                  style: ElevatedButton.styleFrom(
-                      primary: Style().darkColor,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5))),
-                ),
-              )
-            ],
+      Row(
+        children: [
+          Container(
+            margin: EdgeInsets.only(right: 5),
+            child: ElevatedButton(
+              onPressed: () async {
+                var result = await Dialogs().confirm(
+                    context,
+                    "ยกเลิก Order",
+                    "ยกเลิก Order สินค้า ",
+                    Icon(
+                      FontAwesomeIcons.exclamation,
+                      color: Colors.orange,
+                    ));
+                if (result == true) {
+                  print('cancelOrder By Shop');
+                  _cancelOrder(context.read<AppDataModel>(), orderSelected);
+                }
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Style().textSizeColor('ยกเลิก', 14, Colors.white),
+                ],
+              ),
+              style: ElevatedButton.styleFrom(
+                  primary: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5))),
+            ),
           )
-        ]));
+        ],
+      ),
+      Row(
+        children: [
+          Container(
+            margin: EdgeInsets.only(right: 5),
+            child: ElevatedButton(
+              onPressed: () async {
+                var result = await Dialogs().confirm(
+                    context,
+                    "ยืนยัน Order",
+                    "ยืนยัน Order สินค้า ",
+                    Icon(
+                      FontAwesomeIcons.question,
+                      color: Style().darkColor,
+                    ));
+                if (result == true) {
+                  _conFirmOrder(context.read<AppDataModel>(), orderSelected);
+                }
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Style().textSizeColor('ยืนยัน', 14, Colors.white),
+                ],
+              ),
+              style: ElevatedButton.styleFrom(
+                  primary: Style().darkColor,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5))),
+            ),
+          )
+        ],
+      )
+    ]));
   }
 
   Row buildShopStatus(AppDataModel appDataModel) {
@@ -635,54 +658,54 @@ class ShopState extends State<ShopPage> {
       children: [
         (shopModel.shopStatus == '3')
             ? Expanded(
-          child: ListTile(
-            title: Style().textSizeColor(
-                'อยู่ระหว่างการตรวจสอบ', 16, Colors.orange),
-            subtitle:
-            Style().textSizeColor('สถานะ ', 14, Style().textColor),
-          ),
-        )
+                child: ListTile(
+                  title: Style().textSizeColor(
+                      'อยู่ระหว่างการตรวจสอบ', 16, Colors.orange),
+                  subtitle:
+                      Style().textSizeColor('สถานะ ', 14, Style().textColor),
+                ),
+              )
             : (shopOpen == true)
-            ? Expanded(
-          child: ListTile(
-            title:
-            Style().textSizeColor('เปิดร้าน', 16, Colors.green),
-            subtitle: Style()
-                .textSizeColor('สถานะ ', 14, Style().textColor),
-          ),
-        )
-            : Expanded(
-          child: ListTile(
-            title: Style()
-                .textSizeColor('ปิดร้าน', 16, Colors.deepOrange),
-            subtitle: Style()
-                .textSizeColor('สถานะ ', 14, Style().textColor),
-          ),
-        ),
+                ? Expanded(
+                    child: ListTile(
+                      title:
+                          Style().textSizeColor('เปิดร้าน', 16, Colors.green),
+                      subtitle: Style()
+                          .textSizeColor('สถานะ ', 14, Style().textColor),
+                    ),
+                  )
+                : Expanded(
+                    child: ListTile(
+                      title: Style()
+                          .textSizeColor('ปิดร้าน', 16, Colors.deepOrange),
+                      subtitle: Style()
+                          .textSizeColor('สถานะ ', 14, Style().textColor),
+                    ),
+                  ),
         (shopModel.shopStatus == "3")
             ? Container()
             : Switch(
-            activeColor: Style().darkColor,
-            value: shopOpen,
-            onChanged:
-            (shopModel.shopStatus == '1' || shopModel.shopStatus == '2')
-                ? (value) async {
-              if (value == true) {
-                db
-                    .collection('shops')
-                    .doc(uid)
-                    .update({"shop_status": "1"});
-              } else {
-                db
-                    .collection('shops')
-                    .doc(uid)
-                    .update({"shop_status": "2"});
-              }
-              setState(() {
-                shopOpen = value;
-              });
-            }
-                : null)
+                activeColor: Style().darkColor,
+                value: shopOpen,
+                onChanged:
+                    (shopModel.shopStatus == '1' || shopModel.shopStatus == '2')
+                        ? (value) async {
+                            if (value == true) {
+                              db
+                                  .collection('shops')
+                                  .doc(uid)
+                                  .update({"shop_status": "1"});
+                            } else {
+                              db
+                                  .collection('shops')
+                                  .doc(uid)
+                                  .update({"shop_status": "2"});
+                            }
+                            setState(() {
+                              shopOpen = value;
+                            });
+                          }
+                        : null)
       ],
     );
   }

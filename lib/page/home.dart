@@ -13,12 +13,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_facebook_login/flutter_facebook_login.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/allShopModel.dart';
 import 'package:hro/model/cartModel.dart';
+import 'package:hro/model/locationSetupModel.dart';
 import 'package:hro/model/orderModel.dart';
 import 'package:hro/model/productModel.dart';
 import 'package:hro/model/productsModel.dart';
@@ -54,6 +56,7 @@ class HomePage extends StatefulWidget {
 
 class HomeState extends State<HomePage> {
   Dialogs dialogs = Dialogs();
+  FirebaseFirestore db = FirebaseFirestore.instance;
 
   static final FacebookLogin facebookSignIn = new FacebookLogin();
   static final GoogleSignIn googleSignIn = new GoogleSignIn();
@@ -73,49 +76,21 @@ class HomeState extends State<HomePage> {
   int productLength;
   bool getData = false;
 
-  List<ProductsModel> _pairList = [];
-
-  final _itemFetcher = fetchProduct;
-  bool _isLoading = true;
-  bool _hasMore = true;
-  bool stopLoadProduct = false;
-
   int limitProduct = 30;
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
+  String goPage = "";
+  String title = '';
+  String body = "";
 
   // Triggers fecth() and then add new items or change _hasMore flag
-  void _loadMore(AppDataModel appDataModel) {
-    if (_pairList.length <= limitProduct) {
-      print("loadmore");
-      _isLoading = true;
-      _itemFetcher(ranProductModel).then((value) => {
-            if (value.isEmpty)
-              {
-                setState(() {
-                  _isLoading = false;
-                  _hasMore = false;
-                  getAllShopStatus = true;
-                })
-              }
-            else
-              {
-                setState(() {
-                  _isLoading = false;
-                  _pairList.addAll(value);
-                  getAllShopStatus = true;
-                })
-              }
-          });
-    } else {
-      _isLoading = false;
-    }
-  }
 
   _getAllShop(AppDataModel appDataModel) async {
     print("getShop");
     FirebaseMessaging firebaseMessaging = FirebaseMessaging.instance;
     String token = await firebaseMessaging.getToken();
     print('NotiToken = ' + token.toString());
-    await updateToken(appDataModel.profileUid,token);
+    await updateToken(appDataModel.profileUid, token);
     appDataModel.token = token;
     CollectionReference shops = FirebaseFirestore.instance.collection('shops');
 
@@ -130,7 +105,6 @@ class HomeState extends State<HomePage> {
         UserModel userModel = userModelFromJson(jsonData);
         print('Admintoken = ' + userModel.token);
         appDataModel.adminToken = userModel.token;
-
       });
     });
 
@@ -208,9 +182,9 @@ class HomeState extends State<HomePage> {
           .toList();
       print("allProductFilter = " + allProductModelFilter.length.toString());
 
-      (allProductModelFilter.length < 50)
+      (allProductModelFilter.length < limitProduct)
           ? productLength = allProductModelFilter.length
-          : productLength = 50;
+          : productLength = limitProduct;
       List<String> ranProductList = [];
       for (int i = 0; i < productLength;) {
         var randomItem = (allProductModelFilter..shuffle()).first;
@@ -238,27 +212,26 @@ class HomeState extends State<HomePage> {
     await _getOrder(context.read<AppDataModel>());
     // getOrder
 
-    _isLoading = true;
-    _hasMore = true;
-    _loadMore(context.read<AppDataModel>());
+    setState(() {
+      getAllShopStatus = true;
+    });
   }
 
   _reRandomData(AppDataModel appDataModel) async {
     setState(() {
-      _pairList = [];
       ranProductModel = null;
-       ranShopModel = null;
+      ranShopModel = null;
     });
 
     productLength = 0;
-    allProductModelFilter =null;
+    allProductModelFilter = null;
     allProductModelFilter = appDataModel.allProductsData
         .where((element) => (element.productStatus).contains("1"))
         .toList();
 
-    (allProductModelFilter.length < 50)
+    (allProductModelFilter.length < limitProduct)
         ? productLength = allProductModelFilter.length
-        : productLength = 50;
+        : productLength = limitProduct;
     List<String> ranProductList = [];
     for (int i = 0; i < productLength;) {
       var randomItem = (allProductModelFilter..shuffle()).first;
@@ -310,6 +283,7 @@ class HomeState extends State<HomePage> {
   }
 
   Future<Null> _getOrder(AppDataModel appDataModel) async {
+    await _getLocationSetup(context.read<AppDataModel>());
     print('grtOrder');
     orderActiveCount = 0;
     await FirebaseFirestore.instance
@@ -330,7 +304,8 @@ class HomeState extends State<HomePage> {
         if (element.status == '1' ||
             element.status == '2' ||
             element.status == '3' ||
-            element.status == '4') {
+            element.status == '4' ||
+            element.status == '9') {
           orderActiveCount += 1;
         }
       });
@@ -340,6 +315,14 @@ class HomeState extends State<HomePage> {
       print('GetOrder = ' + onError.toString());
     });
     print('endGetOrder');
+  }
+
+  _getLocationSetup(AppDataModel appDataModel) async {
+    await db.collection('appstatus').doc('locationSetup').get().then((value) {
+      print("locationSetup" + jsonEncode(value.data()));
+      var jsonData = jsonEncode(value.data());
+      appDataModel.locationSetupModel = locationSetupModelFromJson(jsonData);
+    });
   }
 
   static int refreshNum = 10; // number that changes when refreshed
@@ -367,12 +350,23 @@ class HomeState extends State<HomePage> {
       print('Message data: ${message.data}');
       if (message.notification != null) {
         print('Message also contained a notification: ${message.notification}');
-        // await normalDialog(context, message.notification.title + '',
-        //      message.notification.body);
         print(message.notification.title);
-        var result = await dialogs.confirm(context, message.notification.title,
-            message.notification.body, Icon(FontAwesomeIcons.question));
-        print("nowPage = " + ModalRoute.of(context).settings.name);
+
+        title = message.notification.title;
+        body = message.notification.body;
+
+        goPage = "";
+        if (message.notification.title.contains("Rider")) {
+          goPage = "/driver-page";
+        } else if (message.notification.title.contains("Shop")) {
+          goPage = '/shop-page';
+        }
+
+        showNotification(title, body, goPage);
+
+        // var result = await dialogs.confirm(context, message.notification.title,
+        //     message.notification.body, Icon(FontAwesomeIcons.question));
+        // print("nowPage = " + ModalRoute.of(context).settings.name);
       }
     });
   }
@@ -380,7 +374,69 @@ class HomeState extends State<HomePage> {
   void initState() {
     super.initState();
     _Notififation();
+    flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
+    var android = new AndroidInitializationSettings('@mipmap/launcher_icon');
+    var iOS = new IOSInitializationSettings();
+    var initSetttings = InitializationSettings(iOS: iOS, android: android);
+    flutterLocalNotificationsPlugin.initialize(initSetttings,
+        onSelectNotification: SelectNotification);
   }
+
+  Future SelectNotification(String payload) {
+    debugPrint("payload : $payload");
+    showDialog(
+      context: context,
+      builder: (_) => new AlertDialog(
+        title: Style().textBlackSize(title, 14),
+        content: Style().textFlexibleBackSize(body, 5, 14),
+        actions: [
+          TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Style().textSizeColor('ออก', 14, Colors.black)),
+          (goPage?.isEmpty ?? true)
+              ? (Container())
+              : TextButton(
+                  onPressed: () async {
+                    if (goPage == "/driver-page" || goPage == "/shop-page") {
+                      print(goPage);
+                      Navigator.pop(context);
+                      await Navigator.pushNamed(context, goPage);
+                    }
+                  },
+                  child:
+                      Style().textSizeColor('ดูOrder', 14, Colors.blueAccent))
+        ],
+      ),
+    );
+  }
+
+  showNotification(String title, String body, String goPage) async {
+    var android = new AndroidNotificationDetails(
+        'channel id', 'channel NAME', 'CHANNEL DESCRIPTION',
+        priority: Priority.high, importance: Importance.max);
+    var iOS = new IOSNotificationDetails();
+    var platform = new NotificationDetails(android: android, iOS: iOS);
+    await flutterLocalNotificationsPlugin.show(0, title, body, platform,
+        payload: 'Nitish Kumar Singh is part time Youtuber');
+  }
+
+  // _getDataForReview(AppDataModel appDataModel)async {
+  //
+  //
+  //   appDataModel.ratingOrderId = e.orderId;
+  //   appDataModel.ratingShopId = e.shopId;
+  //   appDataModel.ratingRiderId = e.driver;
+  //
+  //   var result =  await   Navigator.pushNamed(
+  //       context,  "/Rating4Customer-page");
+  //   if (result != null && result == true){
+  //     setState(() {
+  //       getOrderStatus = false;
+  //     });
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -448,26 +504,25 @@ class HomeState extends State<HomePage> {
                   showChildOpacityTransition: false,
                   onRefresh: _handleRefresh,
                   height: 50,
-                  child: (ranShopModel?.isEmpty ?? true)
-                      ? Style().circularProgressIndicator(Style().darkColor)
-                      : ListView(
-                          children: [
-                            Column(
-                              // mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Container(
-                                //   padding:
-                                //       EdgeInsets.only(left: 10, right: 10, top: 10),
-                                //   child: buildMainMenu(),
-                                // ),
-                                buildMainMenu(),
-                                showShop((context.read<AppDataModel>())),
-                                showProductLoadMore(
-                                    (context.read<AppDataModel>())),
-                              ],
-                            ),
-                          ],
-                        ),
+                  child: ListView(
+                    children: [
+                      Column(
+                        // mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Container(
+                          //   padding:
+                          //       EdgeInsets.only(left: 10, right: 10, top: 10),
+                          //   child: buildMainMenu(),
+                          // ),
+                          // buildMainMenu(),
+                          showShop((context.read<AppDataModel>())),
+                          showProduct((context.read<AppDataModel>())),
+                          // showProductLoadMore(
+                          //     (context.read<AppDataModel>())),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )));
@@ -481,7 +536,7 @@ class HomeState extends State<HomePage> {
         children: [
           InkWell(
             onTap: () {
-              Navigator.pushNamed(context, "/loadMore-page");
+              // Navigator.pushNamed(context, "/loadMore-page");
             },
             child: Container(
               child: Column(
@@ -556,193 +611,6 @@ class HomeState extends State<HomePage> {
                 Style().textBlackSize('สินค้าสำหรับคุญ', 16),
                 InkWell(
                   onTap: () {
-                    Navigator.pushNamed(context, "/allProduct-page");
-                  },
-                  child: Row(
-                    children: [
-                      Style().textSizeColor(
-                          'เลือกซื้อสินค้าต่อ', 14, Colors.blueAccent),
-                      Icon(
-                        Icons.navigate_next_sharp,
-                        color: Colors.blueAccent,
-                        size: 20,
-                      )
-                    ],
-                  ),
-                )
-              ],
-            ),
-          ),
-          (ranProductModel == null)
-              ? Style().circularProgressIndicator(Style().darkColor)
-              : Container(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Wrap(
-                    runSpacing: 8,
-                    spacing: 8,
-                    children: ranProductModel.map((e) {
-                      int i = ranProductModel.indexOf(e);
-                      bool shopOpen = false;
-
-                      ShopModel shopModel;
-                      for (var shop in appDataModel.allFullShopData) {
-                        if (shop.shopUid == e.shopUid) {
-                          shopModel = shopModelFromJson(jsonEncode(shop));
-                          var now = DateTime.now();
-                          int dayNum = now.weekday;
-                          List<String> statusTimeAll = shop.shopTime.split(",");
-                          for (int i = 0; i < statusTimeAll.length - 1; i++) {
-                            if (dayNum == i + 1) {
-                              List<String> statusTime =
-                                  statusTimeAll[i].split("/");
-                              if (statusTime[0] == "close") {
-                                shopOpen = false;
-                              } else {
-                                List<String> openClose =
-                                    statusTime[1].split('-');
-                                List<String> openHM = openClose[0].split(':');
-                                List<String> closeHM = openClose[1].split(':');
-                                final startTime = DateTime(
-                                    now.year,
-                                    now.month,
-                                    now.day,
-                                    int.parse(openHM[0]),
-                                    int.parse(openHM[1]));
-                                final endTime = DateTime(
-                                    now.year,
-                                    now.month,
-                                    now.day,
-                                    int.parse(closeHM[0]),
-                                    int.parse(closeHM[1]));
-                                // final startTime = DateTime(now.year, now.month, now.day, 01, 0);
-                                // final endTime = DateTime(now.year, now.month, now.day, 23,0);
-                                final currentTime = DateTime.now();
-                                (currentTime.isAfter(startTime) &&
-                                        currentTime.isBefore(endTime))
-                                    ? shopOpen = true
-                                    : shopOpen = false;
-                              }
-                            }
-                          }
-                        }
-                      }
-
-                      return InkWell(
-                        onTap: () async {
-                          appDataModel.productSelectId = e.productId;
-                          Navigator.pushNamed(context, "/showProduct-page");
-                        },
-                        child: Container(
-                          width: 180,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(5),
-                            color: Colors.white,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Stack(
-                                children: [
-                                  Container(
-                                      height: 180,
-                                      width: 180,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        color: Colors.white,
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(5.0),
-                                        child: FadeInImage.assetNetwork(
-                                          fit: BoxFit.fitHeight,
-                                          placeholder:
-                                              'assets/images/loading.gif',
-                                          image: e.productPhotoUrl,
-                                        ),
-                                      )),
-                                  // Container(height: 50,
-                                  //   width: 50,child:  paddingShopOpen(e.shopTime, e.shopStatus),)
-                                ],
-                              ),
-                              Container(
-                                width: 170,
-                                margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
-                                child: Column(
-                                  children: [
-                                    Style().textFlexibleBackSize(
-                                        e.productName +
-                                            " - " +
-                                            shopModel.shopName,
-                                        2,
-                                        14)
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                width: 170,
-                                margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
-                                child: Column(
-                                  children: [
-                                    Style().textFlexibleBackSize(
-                                        e.productDetail, 2, 12)
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                width: 170,
-                                margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Style().textSizeColor(e.productPrice + " ฿",
-                                        16, Style().darkColor),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.motorcycle,
-                                          size: 20,
-                                        ),
-                                        Style().textSizeColor(
-                                            appDataModel.costDelivery
-                                                    .toString() +
-                                                ' ฿',
-                                            14,
-                                            Style().shopPrimaryColor),
-                                      ],
-                                    )
-                                  ],
-                                ),
-                              )
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-        ],
-      ),
-    );
-  }
-
-  showProductLoadMore(AppDataModel appDataModel) {
-
-    return Container(
-      margin: EdgeInsets.fromLTRB(10, 10, 10, 0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        children: [
-          Container(
-            margin: EdgeInsets.all(10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Style().textBlackSize('สินค้าสำหรับคุญ', 16),
-                InkWell(
-                  onTap: () {
                     appDataModel.allProductCurrentPage = 1;
                     Navigator.pushNamed(context, "/allProduct-page");
                   },
@@ -761,143 +629,129 @@ class HomeState extends State<HomePage> {
               ],
             ),
           ),
-          Container(
-            padding: EdgeInsets.only(bottom: 10),
-          ),
-          StaggeredGridView.countBuilder(
-            shrinkWrap: true,
-            primary: false,
-            crossAxisCount: 4,
-            itemCount: _hasMore ? _pairList.length + 1 : _pairList.length,
-            itemBuilder: (BuildContext context, int index) {
-              ShopModel shopModel;
-              for (var shop in appDataModel.allFullShopData) {
-                if (index < _pairList.length) {
-                  if (shop.shopUid == _pairList[index].shopUid) {
-                    shopModel = shopModelFromJson(jsonEncode(shop));
-                  }
-                }
-              }
-
-              // Uncomment the following line to see in real time how ListView.builder works
-              // print('ListView.builder is building index $index');
-              if (index >= _pairList.length) {
-                print("index=" + index.toString());
-                print("_pairList.length=" + _pairList.length.toString());
-                // Don't trigger if one async loading is already under way
-                if (!_isLoading) {
-                  _loadMore(context.read<AppDataModel>());
-                }
-                return Center(
-                  child: (_pairList.length <= limitProduct)
-                      ? Container(
-                    width: 150,
-                    height: 150,
-                        child: Center(
-                            child: CircularProgressIndicator(),
-
-                          ),
-                      )
-                      : Container(),
-                );
-              }
-
-              return InkWell(
-                onTap: () async {
-                  appDataModel.productSelectId = _pairList[index].productId;
-                  Navigator.pushNamed(context, "/showProduct-page");
-                },
-                child: Container(
-                  width: 180,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    color: Colors.white,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Stack(
-                        children: [
-                          Container(
-                              height: 180,
-                              width: 180,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(5),
-                                color: Colors.white,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(5.0),
-                                child: FadeInImage.assetNetwork(
-                                  fit: BoxFit.fitHeight,
-                                  placeholder: 'assets/images/loading.gif',
-                                  image: _pairList[index].productPhotoUrl,
-                                ),
-                              )),
-                          // Container(height: 50,
-                          //   width: 50,child:  paddingShopOpen(e.shopTime, e.shopStatus),)
-                        ],
-                      ),
-                      Container(
-                        width: 170,
-                        margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
-                        child: Column(
-                          children: [
-                            (shopModel == null || shopModel.shopName == null)
-                                ? Style().textFlexibleBackSize(
-                                    _pairList[index].productName, 2, 14)
-                                : Style().textFlexibleBackSize(
-                                    _pairList[index].productName +
-                                        " - " +
-                                        shopModel.shopName,
-                                    2,
-                                    14)
-                          ],
+          (ranProductModel == null)
+              ? Container(
+                  height: 150,
+                  child: Style().circularProgressIndicator(Style().darkColor))
+              : StaggeredGridView.countBuilder(
+                  shrinkWrap: true,
+                  primary: false,
+                  crossAxisCount: 2,
+                  staggeredTileBuilder: (int index) => StaggeredTile.fit(1),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  itemCount: ranProductModel.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    print("taggeredGridView $index");
+                    ShopModel shopModel;
+                    for (var shop in appDataModel.allFullShopData) {
+                      if (shop.shopUid == ranProductModel[index].shopUid) {
+                        shopModel = shopModelFromJson(jsonEncode(shop));
+                      }
+                    }
+                    return InkWell(
+                      onTap: () async {
+                        appDataModel.productSelectId =
+                            ranProductModel[index].productId;
+                        Navigator.pushNamed(context, "/showProduct-page");
+                      },
+                      child: Container(
+                        width: 180,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5),
+                          color: Colors.white,
                         ),
-                      ),
-                      Container(
-                        width: 170,
-                        margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Style().textFlexibleBackSize(
-                                _pairList[index].productDetail, 2, 12)
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 170,
-                        margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Style().textSizeColor(
-                                _pairList[index].productPrice + " ฿",
-                                16,
-                                Style().darkColor),
-                            Row(
+                            Stack(
                               children: [
-                                Icon(
-                                  Icons.motorcycle,
-                                  size: 20,
-                                ),
-                                Style().textSizeColor(
-                                    appDataModel.costDelivery.toString() + ' ฿',
-                                    14,
-                                    Style().shopPrimaryColor),
+                                Container(
+                                    height: 180,
+                                    width: 180,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(5),
+                                      color: Colors.white,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(5.0),
+                                      child: FadeInImage.assetNetwork(
+                                        fit: BoxFit.fitHeight,
+                                        placeholder:
+                                            'assets/images/loading.gif',
+                                        image: ranProductModel[index]
+                                            .productPhotoUrl,
+                                      ),
+                                    )),
+                                // Container(height: 50,
+                                //   width: 50,child:  paddingShopOpen(e.shopTime, e.shopStatus),)
                               ],
+                            ),
+                            Container(
+                              width: 170,
+                              margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
+                              child: Column(
+                                children: [
+                                  (shopModel == null ||
+                                          shopModel.shopName == null)
+                                      ? Style().textFlexibleBackSize(
+                                          ranProductModel[index].productName,
+                                          2,
+                                          14)
+                                      : Style().textFlexibleBackSize(
+                                          ranProductModel[index].productName +
+                                              " - " +
+                                              shopModel.shopName,
+                                          2,
+                                          14)
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 170,
+                              margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
+                              child: Column(
+                                children: [
+                                  Style().textFlexibleBackSize(
+                                      ranProductModel[index].productDetail,
+                                      2,
+                                      12)
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 170,
+                              margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Style().textSizeColor(
+                                      ranProductModel[index].productPrice +
+                                          " ฿",
+                                      16,
+                                      Style().darkColor),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.motorcycle,
+                                        size: 20,
+                                      ),
+                                      Style().textSizeColor(
+                                          appDataModel.costDelivery.toString() +
+                                              ' ฿',
+                                          14,
+                                          Style().shopPrimaryColor),
+                                    ],
+                                  )
+                                ],
+                              ),
                             )
                           ],
                         ),
-                      )
-                    ],
-                  ),
-                ),
-              );
-            },
-            staggeredTileBuilder: (int index) => StaggeredTile.fit(2),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-          )
+                      ),
+                    );
+                  })
         ],
       ),
     );
@@ -939,73 +793,77 @@ class HomeState extends State<HomePage> {
             ),
           ),
           (ranShopModel == null)
-              ? Style().circularProgressIndicator(Style().darkColor)
-              : Container(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Wrap(
-                    runSpacing: 5,
-                    spacing: 5,
-                    children: ranShopModel.map((e) {
-                      return InkWell(
-                        onTap: () async {
-                          print("goto StorePage");
-                          appDataModel.storeSelectId = e.shopUid;
-                          await Navigator.pushNamed(context, '/store-page');
-                          appDataModel.currentOrder = [];
-                          _reRandomData(context.read<AppDataModel>());
-                        },
-                        child: Container(
-                          height: 90,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(5),
-                            color: Colors.grey.shade100,
-                          ),
-                          child: Column(
-                            children: [
-                              Stack(
-                                children: [
-                                  Container(
-                                      height: 50,
-                                      width: 50,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        color: Colors.white,
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(5.0),
-                                        child: FadeInImage.assetNetwork(
-                                          fit: BoxFit.fitHeight,
-                                          placeholder:
-                                              'assets/images/loading.gif',
-                                          image: e.shopPhotoUrl,
-                                        ),
-                                      )),
-                                  Container(
+              ? Container(
+                  height: 150,
+                  child: Style().circularProgressIndicator(Style().darkColor))
+              : StaggeredGridView.countBuilder(
+                  shrinkWrap: true,
+                  primary: false,
+                  crossAxisCount: 5,
+                  staggeredTileBuilder: (int index) => StaggeredTile.fit(1),
+                  mainAxisSpacing: 5,
+                  crossAxisSpacing: 5,
+                  itemCount: 10,
+                  itemBuilder: (BuildContext context, int index) {
+                    return InkWell(
+                      onTap: () async {
+                        print("goto StorePage");
+                        appDataModel.storeSelectId =
+                            ranShopModel[index].shopUid;
+                        await Navigator.pushNamed(context, '/store-page');
+                        appDataModel.currentOrder = [];
+                        _reRandomData(context.read<AppDataModel>());
+                      },
+                      child: Container(
+                        height: 90,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5),
+                          color: Colors.grey.shade100,
+                        ),
+                        child: Column(
+                          children: [
+                            Stack(
+                              children: [
+                                Container(
                                     height: 50,
                                     width: 50,
-                                    child: paddingShopOpen(
-                                        e.shopTime, e.shopStatus),
-                                  )
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(5),
+                                      color: Colors.white,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(5.0),
+                                      child: FadeInImage.assetNetwork(
+                                        fit: BoxFit.fitHeight,
+                                        placeholder:
+                                            'assets/images/loading.gif',
+                                        image: ranShopModel[index].shopPhotoUrl,
+                                      ),
+                                    )),
+                                Container(
+                                  height: 50,
+                                  width: 50,
+                                  child: paddingShopOpen(
+                                      ranShopModel[index].shopTime,
+                                      ranShopModel[index].shopStatus),
+                                )
+                              ],
+                            ),
+                            Container(
+                              width: 60,
+                              margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
+                              child: Column(
+                                children: [
+                                  Style().textFlexibleBackSize(
+                                      ranShopModel[index].shopName, 2, 10)
                                 ],
                               ),
-                              Container(
-                                width: 60,
-                                margin: EdgeInsets.fromLTRB(5, 5, 0, 0),
-                                child: Column(
-                                  children: [
-                                    Style()
-                                        .textFlexibleBackSize(e.shopName, 2, 10)
-                                  ],
-                                ),
-                              )
-                            ],
-                          ),
+                            )
+                          ],
                         ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+                      ),
+                    );
+                  })
         ],
       ),
     );
