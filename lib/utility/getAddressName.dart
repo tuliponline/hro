@@ -41,3 +41,37 @@ Future<bool> checkLocationLimit(
   }
   return inService;
 }
+
+Future<List<String>> calDistanceAndCostDelivery(
+    double lat1, double lng1, double lat2, double lng2, int distanceMin,costStart,costPerKm) async {
+  double distance = 0;
+  int costDelivery = costStart;
+
+  print("distanceMin = $distanceMin");
+  print("costStart = $costStart");
+  print("costPerKm = $costPerKm");
+
+  var p = 0.017453292519943295;
+  var c = cos;
+  var a = 0.5 -
+      c((lat2 - lat1) * p) / 2 +
+      c(lat1 * p) * c(lat2 * p) * (1 - c((lng2 - lng1) * p)) / 2;
+  distance = 12742 * asin(sqrt(a));
+
+  int distanceFinal = distance.ceil();
+  int distanceLeft;
+if(distance > distanceMin){
+ distanceLeft =  distanceFinal - distanceMin;
+ costDelivery += (costPerKm * distanceLeft);
+}
+
+print("distance true = $distance");
+  print("distanceFinal = $distanceFinal");
+  print("distanceLeft = $distanceLeft");
+  print("costDelivery = $costDelivery");
+  // if (distance > distanceLimit) {
+  // //outService
+  // }
+
+  return [distance.toString(),costDelivery.toString()];
+}

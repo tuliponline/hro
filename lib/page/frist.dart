@@ -67,12 +67,8 @@ class FirstState extends State<FirstPage> {
     var distanceFormat = NumberFormat('#0.0#', 'en_US');
     distanceString = distanceFormat.format(distance);
     print('ระยะ = $distanceString');
-    checkLocation = true;
-    if (distance > distanceLimit) {
-      inService = false;
-    } else {
-      inService = true;
-    }
+
+    inService = true;
     setState(() {
       checkLocationSuccess = true;
       print("inService = " + inService.toString());

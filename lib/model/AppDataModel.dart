@@ -33,10 +33,10 @@ class AppDataModel {
     _port = port;
   }
 
-  double distanceLimit = 2.0;
+  double distanceLimit;
 
-  int costDelivery = 20;
-  int allProductCurrentPage = 1;
+  int costDelivery ;
+  int allProductCurrentPage ;
   String ratingOrderId,ratingShopId,ratingRiderId,ratingCustomerId;
   String noTiServer = 'https://us-central1-hro-authen.cloudfunctions.net/hello';
   String notifyServer = "https://us-central1-hro-authen.cloudfunctions.net/hello/notify";

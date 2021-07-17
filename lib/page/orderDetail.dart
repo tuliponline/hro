@@ -7,6 +7,7 @@ import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/appStatusModel.dart';
 import 'package:hro/model/cartModel.dart';
 import 'package:hro/model/driverModel.dart';
+import 'package:hro/model/locationSetupModel.dart';
 import 'package:hro/model/userModel.dart';
 import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/addLog.dart';
@@ -15,6 +16,7 @@ import 'package:hro/utility/getAddressName.dart';
 import 'package:hro/utility/getLocationData.dart';
 import 'package:hro/utility/snapshot2list.dart';
 import 'package:hro/utility/style.dart';
+import 'package:intl/intl.dart';
 import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -50,6 +52,9 @@ class OrderDetailState extends State<OrderDetailPage> {
   String dateOpen = '';
 
   bool inService;
+  LocationSetupModel locationSetup;
+  double distanceFinal;
+  String distanceString;
 
   _getRiderOnline(AppDataModel appDataModel) async {
     riderOnline = 0;
@@ -99,6 +104,8 @@ class OrderDetailState extends State<OrderDetailPage> {
   }
 
   Future<Null> _calData(AppDataModel appDataModel) async {
+    await _getLocationSetup(context.read<AppDataModel>());
+
     print("startCallData");
 
     LocationData locationData = await getLocationData();
@@ -107,24 +114,50 @@ class OrderDetailState extends State<OrderDetailPage> {
 
     addressName = await getAddressName(lat, lng);
     print("Get Now LocationCallData");
-
     inService = await checkLocationLimit(appDataModel.latStart,
         appDataModel.lngStart, lat, lng, appDataModel.distanceLimit);
     print("inService = " + inService.toString());
-
     amount = appDataModel.allPrice;
+    int costPerKm;
+    List<String> distanceAndCost = await calDistanceAndCostDelivery(
+        appDataModel.latStart,
+        appDataModel.lngStart,
+        lat,
+        lng,
+        int.parse(locationSetup.distanceStart),
+        int.parse(locationSetup.costDeliveryMin),
+        int.parse(locationSetup.costDeliveryPerKm));
+    distanceFinal = double.parse(distanceAndCost[0]);
+    costPerKm = int.parse(distanceAndCost[1]);
+    var distanceFormat = NumberFormat('#0.0#', 'en_US');
+    distanceString = distanceFormat.format(distanceFinal);
+
     if (appDataModel.allPcs == 1) {
-      costDelivery = 20;
+      costDelivery = costPerKm;
     } else {
       int pcs;
       int addCost;
 
       pcs = appDataModel.allPcs - 1;
-      addCost = pcs * 2;
-      costDelivery = 20 + addCost;
+      addCost =
+          pcs * int.parse(appDataModel.locationSetupModel.costDeliveryPerPcs);
+      costDelivery = costPerKm + addCost;
     }
     setState(() {
       checkRiderOnline = true;
+    });
+  }
+
+  _getLocationSetup(AppDataModel appDataModel) async {
+    await db.collection('appstatus').doc('locationSetup').get().then((value) {
+      print("locationSetup" + jsonEncode(value.data()));
+      var jsonData = jsonEncode(value.data());
+      appDataModel.locationSetupModel = locationSetupModelFromJson(jsonData);
+      List<String> locationLatLng =  appDataModel.locationSetupModel.centerLocation.split(",");
+      appDataModel.latStart = double.parse(locationLatLng[0]);
+      appDataModel.lngStart = double.parse(locationLatLng[1]);
+      appDataModel.distanceLimit = double.parse(appDataModel.locationSetupModel.distanceMax);
+      locationSetup = appDataModel.locationSetupModel;
     });
   }
 
@@ -153,7 +186,7 @@ class OrderDetailState extends State<OrderDetailPage> {
                     : SingleChildScrollView(
                         child: Column(
                           children: [
-                            buildAddressDetail(appDataModel),
+                            buildAddressDetail(context.read<AppDataModel>()),
                             buildOrderDetail(context.read<AppDataModel>()),
                             Container(
                               width: appDataModel.screenW * 0.9,
@@ -320,10 +353,10 @@ class OrderDetailState extends State<OrderDetailPage> {
                   )),
                   Column(
                     children: [
-                      Style()
-                          .textSizeColor(e.price + ' ฿', 16, Style().textColor),
                       Style().textSizeColor(
-                          'จำนวน x ' + e.pcs, 12, Style().darkColor)
+                          amount.toString() + ' ฿', 14, Style().textColor),
+                      Style().textSizeColor(e.price + ' ฿/จำนวน x ' + e.pcs, 12,
+                          Style().darkColor)
                     ],
                   )
                 ],
@@ -343,17 +376,28 @@ class OrderDetailState extends State<OrderDetailPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Style()
-                        .textSizeColor('รวมค่าสินค้า', 16, Style().textColor),
-                    Style().textSizeColor('$amount ฿', 16, Style().textColor)
+                    Style().textSizeColor('ค่าสินค้า', 14, Style().textColor),
+                    Style().textSizeColor('$amount ฿', 14, Style().textColor)
                   ],
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Style().textSizeColor('ค่าส่ง', 16, Style().textColor),
+                    Row(
+                      children: [
+                        Style().textSizeColor('ค่าส่ง', 14, Style().textColor),
+                        Style().textSizeColor(" (" + distanceString + ' กม.)',
+                            10, Style().darkColor)
+                      ],
+                    ),
                     Style()
                         .textSizeColor('$costDelivery ฿', 14, Style().textColor)
+                  ],
+                ) ,Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Style().textSizeColor('รวม', 16, Style().textColor),
+                    Style().textSizeColor((amount + costDelivery).toString()+' ฿', 16, Style().darkColor)
                   ],
                 ),
               ],
@@ -513,6 +557,4 @@ class OrderDetailState extends State<OrderDetailPage> {
           <String, String>{'token': token, 'title': title, 'body': body}),
     );
   }
-
-
 }

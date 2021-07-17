@@ -155,7 +155,6 @@ class HomeState extends State<HomePage> {
       print(onError.toString());
     });
   }
-
   _getAllProduct(AppDataModel appDataModel) async {
     print('getAllProduct');
     CollectionReference products =
@@ -216,7 +215,6 @@ class HomeState extends State<HomePage> {
       getAllShopStatus = true;
     });
   }
-
   _reRandomData(AppDataModel appDataModel) async {
     setState(() {
       ranProductModel = null;
@@ -322,6 +320,10 @@ class HomeState extends State<HomePage> {
       print("locationSetup" + jsonEncode(value.data()));
       var jsonData = jsonEncode(value.data());
       appDataModel.locationSetupModel = locationSetupModelFromJson(jsonData);
+      List<String> locationLatLng =  appDataModel.locationSetupModel.centerLocation.split(",");
+      appDataModel.latStart = double.parse(locationLatLng[0]);
+      appDataModel.lngStart = double.parse(locationLatLng[1]);
+    appDataModel.distanceLimit = double.parse(appDataModel.locationSetupModel.distanceMax);
     });
   }
 
