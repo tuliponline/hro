@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -350,20 +351,45 @@ class AdminState extends State<AdminPage> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Container(
-                                            margin: EdgeInsets.only(
-                                                right: 10, left: 10),
-                                            height: 180,
-                                            width: 180,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(5),
-                                              color: Colors.white,
-                                              image: DecorationImage(
-                                                fit: BoxFit.fitHeight,
-                                                image: NetworkImage(e.photoUrl),
+                                              margin: EdgeInsets.only(
+                                                  right: 10, left: 10),
+                                              height: 180,
+                                              width: 180,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                color: Colors.white,
                                               ),
-                                            ),
-                                          ),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(5.0),
+                                                child: CachedNetworkImage(
+                                                  key: UniqueKey(),
+                                                  imageUrl: e.photoUrl,
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (context, url) =>
+                                                      Container(
+                                                    color: Colors.black12,
+                                                  ),
+                                                  errorWidget:
+                                                      (context, url, error) =>
+                                                          Container(
+                                                    color: Colors.black12,
+                                                    child: (Icon(
+                                                      Icons.error,
+                                                      color: Colors.red,
+                                                    )),
+                                                  ),
+                                                ),
+
+                                                // FadeInImage.assetNetwork(
+                                                //   fit: BoxFit.fitHeight,
+                                                //   placeholder:
+                                                //       'assets/images/loading.gif',
+                                                //   image: ranProductModel[index]
+                                                //       .productPhotoUrl,
+                                                // ),
+                                              )),
                                           Style().textBlackSize(
                                               "email : " + e.email, 14),
                                           (e.phone == null)
@@ -441,14 +467,35 @@ class AdminState extends State<AdminPage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     color: Colors.white,
-                                    image: DecorationImage(
-                                      fit: BoxFit.fitHeight,
-                                      image: (e.shopPhotoUrl?.isEmpty ?? true)
-                                          ? AssetImage(
-                                              'assets/images/shop-icon.png')
-                                          : NetworkImage(e.shopPhotoUrl),
-                                    ),
+
+                                  ),child: ClipRRect(
+                            borderRadius: BorderRadius.circular(5.0),
+                            child: CachedNetworkImage(
+                              key: UniqueKey(),
+                              imageUrl: e.shopPhotoUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  Container(
+                                    color: Colors.black12,
                                   ),
+                              errorWidget: (context, url, error) =>
+                                  Container(
+                                    color: Colors.black12,
+                                    child: (Icon(
+                                      Icons.error,
+                                      color: Colors.red,
+                                    )),
+                                  ),
+                            ),
+
+                            // FadeInImage.assetNetwork(
+                            //   fit: BoxFit.fitHeight,
+                            //   placeholder:
+                            //       'assets/images/loading.gif',
+                            //   image: ranProductModel[index]
+                            //       .productPhotoUrl,
+                            // ),
+                          )
                                 ),
                           Container(
                             margin: EdgeInsets.only(left: 10),
@@ -467,15 +514,35 @@ class AdminState extends State<AdminPage> {
                                           borderRadius:
                                               BorderRadius.circular(5),
                                           color: Colors.white,
-                                          image: DecorationImage(
-                                            fit: BoxFit.fitHeight,
-                                            image: (e.shopPhotoUrl?.isEmpty ??
-                                                    true)
-                                                ? AssetImage(
-                                                    'assets/images/shop-icon.png')
-                                                : NetworkImage(e.shopPhotoUrl),
-                                          ),
+
+                                        ),child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(5.0),
+                                  child: CachedNetworkImage(
+                                    key: UniqueKey(),
+                                    imageUrl: e.shopPhotoUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        Container(
+                                          color: Colors.black12,
                                         ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                          color: Colors.black12,
+                                          child: (Icon(
+                                            Icons.error,
+                                            color: Colors.red,
+                                          )),
+                                        ),
+                                  ),
+
+                                  // FadeInImage.assetNetwork(
+                                  //   fit: BoxFit.fitHeight,
+                                  //   placeholder:
+                                  //       'assets/images/loading.gif',
+                                  //   image: ranProductModel[index]
+                                  //       .productPhotoUrl,
+                                  // ),
+                                )
                                       ),
                                 Row(
                                   children: [
@@ -636,14 +703,35 @@ class AdminState extends State<AdminPage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     color: Colors.white,
-                                    image: DecorationImage(
-                                      fit: BoxFit.fitHeight,
-                                      image: (e.driverPhotoUrl?.isEmpty ?? true)
-                                          ? AssetImage(
-                                              'assets/images/shop-icon.png')
-                                          : NetworkImage(e.driverPhotoUrl),
-                                    ),
+
+                                  ),child: ClipRRect(
+                            borderRadius: BorderRadius.circular(5.0),
+                            child: CachedNetworkImage(
+                              key: UniqueKey(),
+                              imageUrl: e.driverPhotoUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  Container(
+                                    color: Colors.black12,
                                   ),
+                              errorWidget: (context, url, error) =>
+                                  Container(
+                                    color: Colors.black12,
+                                    child: (Icon(
+                                      Icons.error,
+                                      color: Colors.red,
+                                    )),
+                                  ),
+                            ),
+
+                            // FadeInImage.assetNetwork(
+                            //   fit: BoxFit.fitHeight,
+                            //   placeholder:
+                            //       'assets/images/loading.gif',
+                            //   image: ranProductModel[index]
+                            //       .productPhotoUrl,
+                            // ),
+                          )
                                 ),
                           Container(
                             margin: EdgeInsets.only(left: 10),
@@ -662,16 +750,35 @@ class AdminState extends State<AdminPage> {
                                           borderRadius:
                                               BorderRadius.circular(5),
                                           color: Colors.white,
-                                          image: DecorationImage(
-                                            fit: BoxFit.fitHeight,
-                                            image: (e.driverPhotoUrl?.isEmpty ??
-                                                    true)
-                                                ? AssetImage(
-                                                    'assets/images/shop-icon.png')
-                                                : NetworkImage(
-                                                    e.driverPhotoUrl),
-                                          ),
+
+                                        ),child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(5.0),
+                                  child: CachedNetworkImage(
+                                    key: UniqueKey(),
+                                    imageUrl: e.driverPhotoUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        Container(
+                                          color: Colors.black12,
                                         ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                          color: Colors.black12,
+                                          child: (Icon(
+                                            Icons.error,
+                                            color: Colors.red,
+                                          )),
+                                        ),
+                                  ),
+
+                                  // FadeInImage.assetNetwork(
+                                  //   fit: BoxFit.fitHeight,
+                                  //   placeholder:
+                                  //       'assets/images/loading.gif',
+                                  //   image: ranProductModel[index]
+                                  //       .productPhotoUrl,
+                                  // ),
+                                )
                                       ),
                                 Row(
                                   children: [
@@ -838,15 +945,35 @@ class AdminState extends State<AdminPage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     color: Colors.white,
-                                    image: DecorationImage(
-                                      fit: BoxFit.fitHeight,
-                                      image:
-                                          (e.productPhotoUrl?.isEmpty ?? true)
-                                              ? AssetImage(
-                                                  'assets/images/shop-icon.png')
-                                              : NetworkImage(e.productPhotoUrl),
-                                    ),
+
+                                  ),child: ClipRRect(
+                            borderRadius: BorderRadius.circular(5.0),
+                            child: CachedNetworkImage(
+                              key: UniqueKey(),
+                              imageUrl: e.productPhotoUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  Container(
+                                    color: Colors.black12,
                                   ),
+                              errorWidget: (context, url, error) =>
+                                  Container(
+                                    color: Colors.black12,
+                                    child: (Icon(
+                                      Icons.error,
+                                      color: Colors.red,
+                                    )),
+                                  ),
+                            ),
+
+                            // FadeInImage.assetNetwork(
+                            //   fit: BoxFit.fitHeight,
+                            //   placeholder:
+                            //       'assets/images/loading.gif',
+                            //   image: ranProductModel[index]
+                            //       .productPhotoUrl,
+                            // ),
+                          )
                                 ),
                           Container(
                             margin: EdgeInsets.only(left: 10),
@@ -865,17 +992,24 @@ class AdminState extends State<AdminPage> {
                                           borderRadius:
                                               BorderRadius.circular(5),
                                           color: Colors.white,
-                                          image: DecorationImage(
-                                            fit: BoxFit.fitHeight,
-                                            image: (e.productPhotoUrl
-                                                        ?.isEmpty ??
-                                                    true)
-                                                ? AssetImage(
-                                                    'assets/images/shop-icon.png')
-                                                : NetworkImage(
-                                                    e.productPhotoUrl),
-                                          ),
-                                        ),
+
+                                        ), child: CachedNetworkImage(
+                                  key: UniqueKey(),
+                                  imageUrl: e.productPhotoUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) =>
+                                      Container(
+                                        color: Colors.black12,
+                                      ),
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                        color: Colors.black12,
+                                        child: (Icon(
+                                          Icons.error,
+                                          color: Colors.red,
+                                        )),
+                                      ),
+                                ),
                                       ),
                                 Row(
                                   children: [

@@ -1,4 +1,5 @@
 import 'package:anim_search_bar/anim_search_bar.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
@@ -189,11 +190,30 @@ class AllProductState extends State<AllProductsPage> {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(5.0),
-                              child: FadeInImage.assetNetwork(
-                                fit: BoxFit.fitHeight,
-                                placeholder: 'assets/images/loading.gif',
-                                image: _productsData[i].productPhotoUrl,
-                              ),
+                              child:
+                              CachedNetworkImage(
+                                key: UniqueKey(),
+                                imageUrl:
+                                _productsData[i].productPhotoUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    Container(
+                                      color: Colors.black12,
+                                    ),
+                                errorWidget: (context, url, error) =>
+                                    Container(
+                                      color: Colors.black12,
+                                      child: (Icon(
+                                        Icons.error,
+                                        color: Colors.red,
+                                      )),
+                                    ),
+                              )
+                              // FadeInImage.assetNetwork(
+                              //   fit: BoxFit.fitHeight,
+                              //   placeholder: 'assets/images/loading.gif',
+                              //   image: _productsData[i].productPhotoUrl,
+                              // ),
                             ),
                           ),
                           Expanded(
@@ -257,10 +277,29 @@ class AllProductState extends State<AllProductsPage> {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(5.0),
-                            child: FadeInImage.assetNetwork(
-                                fit: BoxFit.fitHeight,
-                                placeholder: 'assets/images/loading.gif',
-                                image: _shopsData[i].shopPhotoUrl),
+                            child:
+                            CachedNetworkImage(
+                              key: UniqueKey(),
+                              imageUrl:
+                              _shopsData[i].shopPhotoUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) =>
+                                  Container(
+                                    color: Colors.black12,
+                                  ),
+                              errorWidget: (context, url, error) =>
+                                  Container(
+                                    color: Colors.black12,
+                                    child: (Icon(
+                                      Icons.error,
+                                      color: Colors.red,
+                                    )),
+                                  ),
+                            )
+                            // FadeInImage.assetNetwork(
+                            //     fit: BoxFit.fitHeight,
+                            //     placeholder: 'assets/images/loading.gif',
+                            //     image: _shopsData[i].shopPhotoUrl),
                           ),
                         ),
                         Expanded(

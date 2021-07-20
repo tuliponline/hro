@@ -60,9 +60,11 @@ class AdminOrderState extends State<AdminOrderPage> {
                 title: Style().textDarkAppbar("Orders"),
               ),
               body: Container(
-                  child: Column(
+                  child: SingleChildScrollView(
+                    child: Column(
                 children: [buildMenu(), buildLimit(), buildOrderList(context.read<AppDataModel>())],
-              )),
+              ),
+                  )),
             ));
   }
 

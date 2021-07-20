@@ -38,6 +38,7 @@ class Order2DriverState extends State<Order2DriverPage> {
   String shopName, customerName, shopPhone, customerPhone;
 
   _getData(AppDataModel appDataModel) async {
+
     orderIdSelect = appDataModel.orderIdSelected;
     db.collection('orders').doc(orderIdSelect).get().then((value) async {
       orderDetail = orderDetailFromJson(jsonEncode(value.data()));

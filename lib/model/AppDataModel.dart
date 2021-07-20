@@ -137,6 +137,9 @@ class AppDataModel {
   double lngStart = 103.979989;
   double latYou;
   double lngYou;
+  double latShop;
+  double lngShop;
+
 
   double latOrder;
   double lngOrder;

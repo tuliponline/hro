@@ -71,20 +71,16 @@ class _MyDrawerState extends State<MyDrawer> {
     orderDriver = 0;
     await db
         .collection('orders')
-        .where('driver', isEqualTo: appDataModel.profileUid)
+        .where('status', isEqualTo: '1')
         .get()
         .then((value) async {
       var jsonData = await setList2Json(value);
       print(jsonData);
       orderList = orderListFromJson(jsonData);
       orderList.forEach((e) {
-        if (e.status == '1' ||
-            e.status == '2' ||
-            e.status == '3' ||
-            e.status == '4' ||
-            e.status == '9') {
+
           orderDriver += 1;
-        }
+
       });
 
       setState(() {

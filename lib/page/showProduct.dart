@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -118,15 +119,38 @@ class ShowProductState extends State<ShowProductPage> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
                               color: Colors.white,
-                              image: DecorationImage(
-                                fit: BoxFit.fitWidth,
-                                image: (productModel.productPhotoUrl == null)
-                                    ? AssetImage("assets/images/food_icon.png")
-                                    : NetworkImage(
-                                        productModel.productPhotoUrl),
+
+
+                            ),child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5.0),
+                        child: CachedNetworkImage(
+                          key: UniqueKey(),
+                          imageUrl: productModel.productPhotoUrl,
+
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                              Container(
+                                color: Colors.black12,
                               ),
-                            ),
-                          ),
+                          errorWidget: (context, url, error) =>
+                              Container(
+                                color: Colors.black12,
+                                child: (Icon(
+                                  Icons.error,
+                                  color: Colors.red,
+                                )),
+                              ),
+                        ),
+
+                        // FadeInImage.assetNetwork(
+                        //   fit: BoxFit.fitHeight,
+                        //   placeholder:
+                        //       'assets/images/loading.gif',
+                        //   image: ranProductModel[index]
+                        //       .productPhotoUrl,
+                        // ),
+                      )),
+
                         ],
                       ),
                     ),

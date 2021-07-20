@@ -120,8 +120,8 @@ class OrderDetailState extends State<OrderDetailPage> {
     amount = appDataModel.allPrice;
     int costPerKm;
     List<String> distanceAndCost = await calDistanceAndCostDelivery(
-        appDataModel.latStart,
-        appDataModel.lngStart,
+        appDataModel.latShop,
+        appDataModel.lngShop,
         lat,
         lng,
         int.parse(locationSetup.distanceStart),
@@ -196,10 +196,10 @@ class OrderDetailState extends State<OrderDetailPage> {
                                         //_getOrder(context.read<AppDataModel>());
                                       },
                                       child: Style().textBlackSize(
-                                          "ท่านอยู่นอกพื้นที่ให้บริการ เกิน " +
+                                          "นอกพื้นที่ให้บริการ เกิน " +
                                               appDataModel.distanceLimit
                                                   .toString() +
-                                              " กม.",
+                                              " กม. จากอากาศ",
                                           14),
                                       style: ElevatedButton.styleFrom(
                                           primary: Colors.yellow,

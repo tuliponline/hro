@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/allShopModel.dart';
 import 'package:hro/model/cartModel.dart';
+import 'package:hro/model/locationSetupModel.dart';
 
 import 'package:hro/model/productsModel.dart';
 import 'package:hro/model/ratingModel.dart';
@@ -52,9 +54,13 @@ class StoreState extends State<StorePage> {
 
   double rating = 0.0;
 
+  LocationSetupModel locationSetup;
+  double distanceFinal;
+  String distanceString;
+  int costDelivery;
+
   _getShopData(AppDataModel appDataModel) async {
     storeSelectId = appDataModel.storeSelectId;
-
     var rating00 = [];
     await db
         .collection("rating")
@@ -83,6 +89,9 @@ class StoreState extends State<StorePage> {
       print("shopData00 = " + storeData.shopName);
     });
 
+    await _getLocationSetup(context.read<AppDataModel>());
+    await _calData(context.read<AppDataModel>());
+
     //Get location
     LocationData locationData = await getLocationData();
     lat1 = locationData.latitude;
@@ -96,12 +105,11 @@ class StoreState extends State<StorePage> {
         appDataModel.currentShopSelect =
             shopModelFromJson(jsonEncode(shopData));
         storeData = appDataModel.currentShopSelect;
-        if(storeData.shopStatus == "1"){
+        if (storeData.shopStatus == "1") {
           await _getShopOpen(storeData.shopTime);
-        }else{
+        } else {
           shopOpen = false;
         }
-
 
         appDataModel.shopOpen = shopOpen;
         _getProduct(context.read<AppDataModel>());
@@ -152,6 +160,46 @@ class StoreState extends State<StorePage> {
     }
   }
 
+  _getLocationSetup(AppDataModel appDataModel) async {
+    await db.collection('appstatus').doc('locationSetup').get().then((value) {
+      print("locationSetup" + jsonEncode(value.data()));
+      var jsonData = jsonEncode(value.data());
+      appDataModel.locationSetupModel = locationSetupModelFromJson(jsonData);
+      List<String> locationLatLng =
+          appDataModel.locationSetupModel.centerLocation.split(",");
+      appDataModel.latStart = double.parse(locationLatLng[0]);
+      appDataModel.lngStart = double.parse(locationLatLng[1]);
+      appDataModel.distanceLimit =
+          double.parse(appDataModel.locationSetupModel.distanceMax);
+      locationSetup = appDataModel.locationSetupModel;
+    });
+  }
+
+  Future<Null> _calData(AppDataModel appDataModel) async {
+    List<String> locationLatLng = storeData.shopLocation.split(",");
+    appDataModel.latShop = double.parse(locationLatLng[0]);
+    appDataModel.lngShop = double.parse(locationLatLng[1]);
+
+    await _getLocationSetup(context.read<AppDataModel>());
+    LocationData locationData = await getLocationData();
+    double latYou = locationData.latitude;
+    double lngSou = locationData.longitude;
+    int costPerKm;
+    List<String> distanceAndCost = await calDistanceAndCostDelivery(
+        appDataModel.latShop,
+        appDataModel.lngShop,
+        latYou,
+        lngSou,
+        int.parse(locationSetup.distanceStart),
+        int.parse(locationSetup.costDeliveryMin),
+        int.parse(locationSetup.costDeliveryPerKm));
+    distanceFinal = double.parse(distanceAndCost[0]);
+    costPerKm = int.parse(distanceAndCost[1]);
+    var distanceFormat = NumberFormat('#0.0#', 'en_US');
+    distanceString = distanceFormat.format(distanceFinal);
+    costDelivery = costPerKm;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (getDataStatus == false) _getShopData(context.read<AppDataModel>());
@@ -180,54 +228,110 @@ class StoreState extends State<StorePage> {
                       width: appDataModel.screenW,
                       child: Column(
                         children: [
-                          Container(
-                              height: 150,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                image: DecorationImage(
-                                  fit: BoxFit.fitWidth,
-                                  image: (storeData.shopPhotoUrl == null)
-                                      ? AssetImage(
-                                          "assets/images/food_icon.png")
-                                      : NetworkImage(storeData.shopPhotoUrl),
-                                ),
-                              ),
-                              child: SafeArea(
-                                child: InkWell(
-                                  onTap: () {
-                                    print("back to homePage");
-                                    appDataModel.currentOrder = [];
-                                    (appDataModel.currentOrder != null)
-                                        ? Navigator.pushNamedAndRemoveUntil(
-                                            context,
-                                            '/home-page',
-                                            (route) => false)
-                                        : Navigator.pop(context);
-                                    // Navigator.pushNamedAndRemoveUntil(context,
-                                    //     '/home-page', (route) => false);
-                                  },
-                                  child: Container(
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(5.0),
+                            child: Stack(
+                              children: [
+                                Container(
+                                  height: 150,
+                                  width: appDataModel.screenW,
+                                  child: CachedNetworkImage(
+                                    key: UniqueKey(),
+                                    imageUrl: storeData.shopPhotoUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.black12,
+                                    ),
+                                    errorWidget: (context, url, error) =>
                                         Container(
-                                          margin: EdgeInsets.all(10),
-                                          padding: EdgeInsets.all(5),
-                                          decoration: BoxDecoration(
-                                              color: Colors.black87
-                                                  .withOpacity(0.4),
-                                              shape: BoxShape.circle),
-                                          child: Icon(
-                                            Icons.close,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
+                                      color: Colors.black12,
+                                      child: (Icon(
+                                        Icons.error,
+                                        color: Colors.red,
+                                      )),
                                     ),
                                   ),
-                                ),
-                              )),
+                                ),SafeArea(
+                                  child: Align(
+                                    alignment: Alignment.topLeft,
+                                    child: InkWell(
+                                        onTap: () async {
+                                          if (appDataModel.currentOrder.length == 0) {
+                                            appDataModel.currentOrder = [];
+                                            Navigator.pop(context);
+                                          } else {
+                                            appDataModel.currentOrder = [];
+                                            Navigator.pushNamedAndRemoveUntil(context,
+                                                '/home-page', (route) => false);
+                                          }
+                                        },
+                                          child: Container(
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Container(
+                                                  margin: EdgeInsets.all(10),
+                                                  padding: EdgeInsets.all(5),
+                                                  decoration: BoxDecoration(
+                                                      color: Colors.black87
+                                                          .withOpacity(0.4),
+                                                      shape: BoxShape.circle),
+                                                  child: Icon(
+                                                    Icons.close,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                  ),
+                                )))
+                              ],
+                            ),
+
+                            // FadeInImage.assetNetwork(
+                            //   fit: BoxFit.fitHeight,
+                            //   placeholder:
+                            //       'assets/images/loading.gif',
+                            //   image: ranProductModel[index]
+                            //       .productPhotoUrl,
+                            // ),
+                          ),
+
+                          // child: SafeArea(
+                          //   child: InkWell(
+                          //     onTap: () async {
+                          //       if (appDataModel.currentOrder.length == 0) {
+                          //         appDataModel.currentOrder = [];
+                          //         Navigator.pop(context);
+                          //       } else {
+                          //         appDataModel.currentOrder = [];
+                          //         Navigator.pushNamedAndRemoveUntil(context,
+                          //             '/home-page', (route) => false);
+                          //       }
+                          //     },
+                          //     child: Container(
+                          //       child: Row(
+                          //         crossAxisAlignment:
+                          //             CrossAxisAlignment.start,
+                          //         children: [
+                          //           Container(
+                          //             margin: EdgeInsets.all(10),
+                          //             padding: EdgeInsets.all(5),
+                          //             decoration: BoxDecoration(
+                          //                 color: Colors.black87
+                          //                     .withOpacity(0.4),
+                          //                 shape: BoxShape.circle),
+                          //             child: Icon(
+                          //               Icons.close,
+                          //               color: Colors.white,
+                          //             ),
+                          //           ),
+                          //         ],
+                          //       ),
+                          //     ),
+                          //   ),
+                          // )),
                         ],
                       ),
                     ),
@@ -362,13 +466,6 @@ class StoreState extends State<StorePage> {
       );
 
   buildDistance(String location, AppDataModel appDataModel) {
-    List<String> locationLatLng = location.split(",");
-    double lat = double.parse(locationLatLng[0]);
-    double lng = double.parse(locationLatLng[1]);
-
-    double distance = calculateDistance(lat1, lng1, lat, lng);
-    var distanceFormat = NumberFormat('#0.0#', 'en_US');
-    String distanceString = distanceFormat.format(distance);
     appDataModel.distanceDelivery = distanceString;
 
     double ratingForShow = double.parse((rating).toStringAsFixed(0));
@@ -409,7 +506,7 @@ class StoreState extends State<StorePage> {
                     onTap: () {
                       print("Show Review");
                       appDataModel.shopRatingList = ratingListModel;
-                      Navigator.pushNamed(context,  "/shopReview-page");
+                      Navigator.pushNamed(context, "/shopReview-page");
                     },
                     child: Style()
                         .textSizeColor(' ดูรีวิว', 12, Colors.blueAccent),
@@ -490,15 +587,30 @@ class StoreState extends State<StorePage> {
                                 color: Colors.white,
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(5.0),
-                                child: FadeInImage.assetNetwork(
-                                  fit: BoxFit.fitHeight,
-                                  placeholder: 'assets/images/loading.gif',
-                                  image: allProductData[index].productPhotoUrl,
-                                ),
-                              )),
-                          // Container(height: 50,
-                          //   width: 50,child:  paddingShopOpen(e.shopTime, e.shopStatus),)
+                                  borderRadius: BorderRadius.circular(5.0),
+                                  child: CachedNetworkImage(
+                                    key: UniqueKey(),
+                                    imageUrl:
+                                        allProductData[index].productPhotoUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.black12,
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      color: Colors.black12,
+                                      child: (Icon(
+                                        Icons.error,
+                                        color: Colors.red,
+                                      )),
+                                    ),
+                                  )
+                                  // FadeInImage.assetNetwork(
+                                  //   fit: BoxFit.fitHeight,
+                                  //   placeholder: 'assets/images/loading.gif',
+                                  //   image: allProductData[index].productPhotoUrl,
+                                  // ),
+                                  )),
                         ],
                       ),
                       Container(
@@ -545,7 +657,7 @@ class StoreState extends State<StorePage> {
                                   size: 20,
                                 ),
                                 Style().textSizeColor(
-                                    appDataModel.costDelivery.toString() + ' ฿',
+                                    costDelivery.toString() + ' ฿',
                                     14,
                                     Style().shopPrimaryColor),
                               ],
@@ -606,10 +718,21 @@ class StoreState extends State<StorePage> {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(5.0),
-                                    child: FadeInImage.assetNetwork(
-                                      fit: BoxFit.fitHeight,
-                                      placeholder: 'assets/images/loading.gif',
-                                      image: e.productPhotoUrl,
+                                    child: CachedNetworkImage(
+                                      key: UniqueKey(),
+                                      imageUrl: e.productPhotoUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
+                                        color: Colors.black12,
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                        color: Colors.black12,
+                                        child: (Icon(
+                                          Icons.error,
+                                          color: Colors.red,
+                                        )),
+                                      ),
                                     ),
                                   ),
                                 ),

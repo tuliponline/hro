@@ -384,10 +384,14 @@ class OrderShowState extends State<OrderShowPage> {
                                               setState(() {
                                                 appDataModel.orderIdSelected =
                                                     orderDetail.orderId;
-                                                if (orderDetail.comment != null)
+                                                if (orderDetail.comment != null){ appDataModel
+                                                    .orderAddressComment =
+                                                    orderDetail.comment;}else{
                                                   appDataModel
-                                                          .orderAddressComment =
-                                                      orderDetail.comment;
+                                                      .orderAddressComment =
+                                                      "";
+                                                }
+
                                                 print(orderDetail.location);
                                                 List<String> locationLatLng =
                                                     orderDetail.location

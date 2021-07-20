@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:badges/badges.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -12,6 +13,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_facebook_login/flutter_facebook_login.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -148,13 +150,14 @@ class HomeState extends State<HomePage> {
       ranShopModel = allShopModelFromJson(rowData);
       print("randomShopCount" + ranShopModel.length.toString());
       ranShopModel.forEach((element) {
-        print("name = " + element.shopName);
+
       });
     }).catchError((onError) {
       appDataModel.allShopData = null;
       print(onError.toString());
     });
   }
+
   _getAllProduct(AppDataModel appDataModel) async {
     print('getAllProduct');
     CollectionReference products =
@@ -202,7 +205,7 @@ class HomeState extends State<HomePage> {
       print("randomCount" + ranProductModel.length.toString());
 
       ranProductModel.forEach((element) {
-        print("name = " + element.productName);
+
       });
     }).catchError((onError) {
       appDataModel.allProductsData = null;
@@ -215,6 +218,7 @@ class HomeState extends State<HomePage> {
       getAllShopStatus = true;
     });
   }
+
   _reRandomData(AppDataModel appDataModel) async {
     setState(() {
       ranProductModel = null;
@@ -268,10 +272,10 @@ class HomeState extends State<HomePage> {
     }
     String rowData2 = ranShop.toString();
     ranShopModel = allShopModelFromJson(rowData2);
-
     setState(() {
-      print("re-random Complete");
+
     });
+
   }
 
   getRandomElement<T>(List<T> list) {
@@ -320,10 +324,12 @@ class HomeState extends State<HomePage> {
       print("locationSetup" + jsonEncode(value.data()));
       var jsonData = jsonEncode(value.data());
       appDataModel.locationSetupModel = locationSetupModelFromJson(jsonData);
-      List<String> locationLatLng =  appDataModel.locationSetupModel.centerLocation.split(",");
+      List<String> locationLatLng =
+          appDataModel.locationSetupModel.centerLocation.split(",");
       appDataModel.latStart = double.parse(locationLatLng[0]);
       appDataModel.lngStart = double.parse(locationLatLng[1]);
-    appDataModel.distanceLimit = double.parse(appDataModel.locationSetupModel.distanceMax);
+      appDataModel.distanceLimit =
+          double.parse(appDataModel.locationSetupModel.distanceMax);
     });
   }
 
@@ -487,6 +493,9 @@ class HomeState extends State<HomePage> {
                     ),
                     onPressed: () {
                       setState(() {
+                        DefaultCacheManager().emptyCache();
+                        imageCache.clear();
+                        imageCache.clearLiveImages();
                         _handleRefresh();
                       });
                     }),
@@ -644,7 +653,7 @@ class HomeState extends State<HomePage> {
                   crossAxisSpacing: 8,
                   itemCount: ranProductModel.length,
                   itemBuilder: (BuildContext context, int index) {
-                    print("taggeredGridView $index");
+
                     ShopModel shopModel;
                     for (var shop in appDataModel.allFullShopData) {
                       if (shop.shopUid == ranProductModel[index].shopUid) {
@@ -677,13 +686,32 @@ class HomeState extends State<HomePage> {
                                     ),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(5.0),
-                                      child: FadeInImage.assetNetwork(
-                                        fit: BoxFit.fitHeight,
-                                        placeholder:
-                                            'assets/images/loading.gif',
-                                        image: ranProductModel[index]
+                                      child: CachedNetworkImage(
+                                        key: UniqueKey(),
+                                        imageUrl: ranProductModel[index]
                                             .productPhotoUrl,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            Container(
+                                          color: Colors.black12,
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                          color: Colors.black12,
+                                          child: (Icon(
+                                            Icons.error,
+                                            color: Colors.red,
+                                          )),
+                                        ),
                                       ),
+
+                                      // FadeInImage.assetNetwork(
+                                      //   fit: BoxFit.fitHeight,
+                                      //   placeholder:
+                                      //       'assets/images/loading.gif',
+                                      //   image: ranProductModel[index]
+                                      //       .productPhotoUrl,
+                                      // ),
                                     )),
                                 // Container(height: 50,
                                 //   width: 50,child:  paddingShopOpen(e.shopTime, e.shopStatus),)
@@ -740,7 +768,7 @@ class HomeState extends State<HomePage> {
                                         size: 20,
                                       ),
                                       Style().textSizeColor(
-                                          appDataModel.costDelivery.toString() +
+                                         " " + appDataModel.locationSetupModel.costDeliveryMin +
                                               ' ฿',
                                           14,
                                           Style().shopPrimaryColor),
@@ -812,9 +840,13 @@ class HomeState extends State<HomePage> {
                         print("goto StorePage");
                         appDataModel.storeSelectId =
                             ranShopModel[index].shopUid;
-                        await Navigator.pushNamed(context, '/store-page');
                         appDataModel.currentOrder = [];
-                        _reRandomData(context.read<AppDataModel>());
+
+                        await Navigator.pushNamed(context, '/store-page');
+                        print("combact 111111111111111");
+                        await _reRandomData(context.read<AppDataModel>());
+
+
                       },
                       child: Container(
                         height: 90,
@@ -835,13 +867,35 @@ class HomeState extends State<HomePage> {
                                     ),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(5.0),
-                                      child: FadeInImage.assetNetwork(
-                                        fit: BoxFit.fitHeight,
-                                        placeholder:
-                                            'assets/images/loading.gif',
-                                        image: ranShopModel[index].shopPhotoUrl,
+                                      child: CachedNetworkImage(
+                                        key: UniqueKey(),
+                                        imageUrl:
+                                            ranShopModel[index].shopPhotoUrl,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            Container(
+                                          color: Colors.black12,
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                          color: Colors.black12,
+                                          child: (Icon(
+                                            Icons.error,
+                                            color: Colors.red,
+                                          )),
+                                        ),
                                       ),
                                     )),
+
+                                // ClipRRect(
+                                //   borderRadius: BorderRadius.circular(5.0),
+                                //   child: FadeInImage.assetNetwork(
+                                //     fit: BoxFit.fitHeight,
+                                //     placeholder:
+                                //         'assets/images/loading.gif',
+                                //     image: ranShopModel[index].shopPhotoUrl,
+                                //   ),
+                                // )),
                                 Container(
                                   height: 50,
                                   width: 50,
