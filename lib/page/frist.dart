@@ -4,13 +4,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_facebook_login/flutter_facebook_login.dart';
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:get_version/get_version.dart';
 import 'package:hro/model/AppDataModel.dart';
+import 'package:hro/model/appStatusModel.dart';
 import 'package:hro/model/userModel.dart';
 import 'package:hro/utility/Dialogs.dart';
 import 'package:hro/utility/checkLocationService.dart';
@@ -26,6 +29,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' as Foundation;
 
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class FirstPage extends StatefulWidget {
   @override
@@ -49,55 +53,95 @@ class FirstState extends State<FirstPage> {
   bool locationPermission = false;
   bool checkLocationSuccess = false;
   bool loginIn = false;
-  double distanceLimit ;
+  double distanceLimit;
+
+  FirebaseFirestore db = FirebaseFirestore.instance;
+
+  _getVersion(AppDataModel appDataModel) async {
+    try {
+      appDataModel.projectVersion = await GetVersion.projectVersion;
+    } on PlatformException {
+      appDataModel.projectVersion = 'error';
+    }
+  }
+
+  _launchURL(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
 
   Future<Null> _getLocation(AppDataModel appDataModel) async {
-    distanceLimit = appDataModel.distanceLimit;
+    await _getVersion(context.read<AppDataModel>());
+    print("project version = " + appDataModel.projectVersion);
 
-    if (Foundation.kDebugMode) {
-      print("App in debug mode");
-    } else {
-      print("App in release. mode");
+    if (appDataModel.projectVersion != null ||
+        appDataModel.projectVersion != "error") {
+      print("project version incondition = " + appDataModel.projectVersion);
+      await db.collection('appstatus').doc("001").get().then((value) async {
+        AppStatusModel appStatusModel =
+            appStatusModelFromJson(jsonEncode(value.data()));
+        if (appDataModel.projectVersion != appStatusModel.projectVersion) {
+       await   Dialogs().information(
+              context,
+              Style().textBlackSize('อัพเดทเวอร์ชั่น', 14),
+              Style().textBlackSize('มีเวอร์ชั่นใหม่ โปรดอัพเดท', 14));
+       SystemNavigator.pop();
+         _launchURL(appDataModel.playStoreUrl);
+
+        }else{
+          distanceLimit = appDataModel.distanceLimit;
+
+          if (Foundation.kDebugMode) {
+            print("App in debug mode");
+          } else {
+            print("App in release. mode");
+          }
+          LocationData locationData = await getLocationData();
+          lat = locationData.latitude;
+          lng = locationData.longitude;
+          distance = calculateDistance(
+              appDataModel.latStart, appDataModel.lngStart, lat, lng);
+          var distanceFormat = NumberFormat('#0.0#', 'en_US');
+          distanceString = distanceFormat.format(distance);
+          print('ระยะ = $distanceString');
+
+          inService = true;
+          setState(() {
+            checkLocationSuccess = true;
+            print("inService = " + inService.toString());
+          });
+        }
+      });
     }
-    LocationData locationData = await getLocationData();
-    lat = locationData.latitude;
-    lng = locationData.longitude;
-    distance = calculateDistance(
-        appDataModel.latStart, appDataModel.lngStart, lat, lng);
-    var distanceFormat = NumberFormat('#0.0#', 'en_US');
-    distanceString = distanceFormat.format(distance);
-    print('ระยะ = $distanceString');
 
-    inService = true;
-    setState(() {
-      checkLocationSuccess = true;
-      print("inService = " + inService.toString());
-    });
+
   }
 
   //google login//
   Future<Null> signInWithGoogle(AppDataModel appDataModel) async {
     print("googleLogin Start");
     await _getLocation(context.read<AppDataModel>());
-      final GoogleSignInAccount googleUser = await googleSignIn.signIn();
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-          idToken: googleAuth.idToken, accessToken: googleAuth.accessToken);
+    final GoogleSignInAccount googleUser = await googleSignIn.signIn();
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+    final AuthCredential credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken, accessToken: googleAuth.accessToken);
 
-      await FirebaseAuth.instance
-          .signInWithCredential(credential)
-          .then((value) async {
-        appDataModel.profileEmail = value.user.email;
-        appDataModel.profileName = value.user.displayName;
-        appDataModel.profileUid = value.user.uid;
-        appDataModel.profilePhotoUrl = value.user.photoURL;
-        appDataModel.profilePhone = value.user.phoneNumber;
-        appDataModel.profileEmailVerify = value.user.emailVerified;
-        appDataModel.loginProvider = credential.providerId;
-        _checkHaveUser(context.read<AppDataModel>());
-      });
-
+    await FirebaseAuth.instance
+        .signInWithCredential(credential)
+        .then((value) async {
+      appDataModel.profileEmail = value.user.email;
+      appDataModel.profileName = value.user.displayName;
+      appDataModel.profileUid = value.user.uid;
+      appDataModel.profilePhotoUrl = value.user.photoURL;
+      appDataModel.profilePhone = value.user.phoneNumber;
+      appDataModel.profileEmailVerify = value.user.emailVerified;
+      appDataModel.loginProvider = credential.providerId;
+      _checkHaveUser(context.read<AppDataModel>());
+    });
   }
 
 // facebook login
@@ -151,37 +195,35 @@ class FirstState extends State<FirstPage> {
       locationPermission = true;
       await _getLocation(context.read<AppDataModel>());
 
-        final FirebaseAuth auth = await FirebaseAuth.instance;
-        final User user = auth.currentUser;
-        if (user != null) {
-          appDataModel.profileUid = user.uid;
-          CollectionReference users =
-              FirebaseFirestore.instance.collection('users');
-          await users.doc(appDataModel.profileUid).get().then((value) {
-            print('checkLogin = ' + value['email']);
-            UserModel userDataFinal =
-                userModelFromJson(jsonEncode(value.data()));
+      final FirebaseAuth auth = await FirebaseAuth.instance;
+      final User user = auth.currentUser;
+      if (user != null) {
+        appDataModel.profileUid = user.uid;
+        CollectionReference users =
+            FirebaseFirestore.instance.collection('users');
+        await users.doc(appDataModel.profileUid).get().then((value) {
+          print('checkLogin = ' + value['email']);
+          UserModel userDataFinal = userModelFromJson(jsonEncode(value.data()));
 
-            appDataModel.profileEmail = userDataFinal.email;
-            appDataModel.profileName = userDataFinal.name;
-            appDataModel.profilePhotoUrl = userDataFinal.photoUrl;
-            appDataModel.profilePhone = userDataFinal.phone;
-            appDataModel.profileStatus = userDataFinal.status;
-            appDataModel.profileLocation = userDataFinal.location;
-          }).catchError((error) {
-            print('CheckLogin error = ' + error.toString());
-          });
+          appDataModel.profileEmail = userDataFinal.email;
+          appDataModel.profileName = userDataFinal.name;
+          appDataModel.profilePhotoUrl = userDataFinal.photoUrl;
+          appDataModel.profilePhone = userDataFinal.phone;
+          appDataModel.profileStatus = userDataFinal.status;
+          appDataModel.profileLocation = userDataFinal.location;
+        }).catchError((error) {
+          print('CheckLogin error = ' + error.toString());
+        });
 
-          Navigator.pushNamedAndRemoveUntil(
-              context, '/home-page', (route) => false);
-        } else {
-          print("non login");
-          setState(() {
-            checkLocationSuccess = true;
-            checkLogin = true;
-          });
-        }
-
+        Navigator.pushNamedAndRemoveUntil(
+            context, '/home-page', (route) => false);
+      } else {
+        print("non login");
+        setState(() {
+          checkLocationSuccess = true;
+          checkLogin = true;
+        });
+      }
     }
   }
 
@@ -316,155 +358,151 @@ class FirstState extends State<FirstPage> {
                                 children: [
                                   Style().titleH0("เฮาะ"),
                                   Style().textDark("อากาศเดลิเวอรี่"),
-                                   Column(
-                                          children: [
-                                            Container(
-                                              width: appDataModel.screenW * 0.9,
-                                              child: ElevatedButton(
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      loginIn = true;
-                                                    });
+                                  Column(
+                                    children: [
+                                      Container(
+                                        width: appDataModel.screenW * 0.9,
+                                        child: ElevatedButton(
+                                            onPressed: () {
+                                              setState(() {
+                                                loginIn = true;
+                                              });
 
-                                                    signInWithGoogle(context
-                                                        .read<AppDataModel>());
-                                                  },
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceEvenly,
-                                                    children: [
-                                                      (loginIn == true)
-                                                          ? Container()
-                                                          : Container(
-                                                              //color: Colors.redAccent,
-                                                              width: (appDataModel
-                                                                          .screenW *
-                                                                      0.9) *
-                                                                  0.1,
-                                                              child:
-                                                                  Image.asset(
-                                                                'assets/images/googleLogo.png',
-                                                                height: 20,
-                                                              ),
-                                                            ),
-                                                      Container(
-                                                          //color: Colors.green,
-                                                          width: (appDataModel
-                                                                      .screenW *
-                                                                  0.9) *
-                                                              0.8,
-                                                          child: Row(
-                                                            mainAxisAlignment:
-                                                                MainAxisAlignment
-                                                                    .center,
-                                                            children: [
-                                                              (loginIn == true)
-                                                                  ? Style().circularProgressIndicator(
-                                                                      Style()
-                                                                          .darkColor)
-                                                                  : Style()
-                                                                      .textBlack54(
-                                                                          'เข้าใช้งานด้วย Google'),
-                                                            ],
-                                                          )),
-                                                    ],
-                                                  ),
-                                                  style: ElevatedButton.styleFrom(
-                                                      primary: Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          5)))),
+                                              signInWithGoogle(
+                                                  context.read<AppDataModel>());
+                                            },
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                (loginIn == true)
+                                                    ? Container()
+                                                    : Container(
+                                                        //color: Colors.redAccent,
+                                                        width: (appDataModel
+                                                                    .screenW *
+                                                                0.9) *
+                                                            0.1,
+                                                        child: Image.asset(
+                                                          'assets/images/googleLogo.png',
+                                                          height: 20,
+                                                        ),
+                                                      ),
+                                                Container(
+                                                    //color: Colors.green,
+                                                    width:
+                                                        (appDataModel.screenW *
+                                                                0.9) *
+                                                            0.8,
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        (loginIn == true)
+                                                            ? Style()
+                                                                .circularProgressIndicator(
+                                                                    Style()
+                                                                        .darkColor)
+                                                            : Style().textBlack54(
+                                                                'เข้าใช้งานด้วย Google'),
+                                                      ],
+                                                    )),
+                                              ],
                                             ),
-                                            // Stack(
-                                            //   alignment: Alignment.center,
-                                            //   children: <Widget>[
-                                            //     Column(
-                                            //         mainAxisAlignment:
-                                            //             MainAxisAlignment.center,
-                                            //         children: <Widget>[
-                                            //           Container(
-                                            //               width: MediaQuery.of(context)
-                                            //                       .size
-                                            //                       .width *
-                                            //                   0.9,
-                                            //               height: 10),
-                                            //           Container(
-                                            //               width: MediaQuery.of(context)
-                                            //                       .size
-                                            //                       .width *
-                                            //                   0.9,
-                                            //               height: 1,
-                                            //               color: Colors.grey),
-                                            //           Container(
-                                            //               width: MediaQuery.of(context)
-                                            //                       .size
-                                            //                       .width *
-                                            //                   0.9,
-                                            //               height: 10),
-                                            //         ]),
-                                            //     Container(
-                                            //       width: 50,
-                                            //       height: 50,
-                                            //       decoration: BoxDecoration(
-                                            //           color: Colors.white,
-                                            //           shape: BoxShape.circle),
-                                            //       child: Center(
-                                            //           child: Style()
-                                            //               .textBlackSmall('หรือ')),
-                                            //     ),
-                                            //   ],
-                                            // ),
-                                            // Container(
-                                            //   width: appDataModel.screenW * 0.9,
-                                            //   child: ElevatedButton(
-                                            //       onPressed: () {
-                                            //         Navigator.pushNamed(
-                                            //             context, '/login-page');
-                                            //       },
-                                            //       child: Row(
-                                            //         mainAxisAlignment:
-                                            //             MainAxisAlignment.spaceEvenly,
-                                            //         children: [
-                                            //           Container(
-                                            //             //   color: Colors.redAccent,
-                                            //             width: (appDataModel.screenW *
-                                            //                     0.9) *
-                                            //                 0.1,
-                                            //             child: Icon(
-                                            //               Icons.email,
-                                            //               color: Colors.white,
-                                            //               size: 20,
-                                            //             ),
-                                            //           ),
-                                            //           Container(
-                                            //               //color: Colors.green,
-                                            //               width: (appDataModel.screenW *
-                                            //                       0.9) *
-                                            //                   0.8,
-                                            //               child: Row(
-                                            //                 mainAxisAlignment:
-                                            //                     MainAxisAlignment
-                                            //                         .center,
-                                            //                 children: [
-                                            //                   Style().textWhite(
-                                            //                       'เข้าใช้งานด้วย Email'),
-                                            //                 ],
-                                            //               ))
-                                            //         ],
-                                            //       ),
-                                            //       style: ElevatedButton.styleFrom(
-                                            //           primary: Style().emailColor,
-                                            //           shape: RoundedRectangleBorder(
-                                            //               borderRadius:
-                                            //                   BorderRadius.circular(
-                                            //                       5)))),
-                                            // ),
-                                          ],
-                                        )
+                                            style: ElevatedButton.styleFrom(
+                                                primary: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5)))),
+                                      ),
+                                      // Stack(
+                                      //   alignment: Alignment.center,
+                                      //   children: <Widget>[
+                                      //     Column(
+                                      //         mainAxisAlignment:
+                                      //             MainAxisAlignment.center,
+                                      //         children: <Widget>[
+                                      //           Container(
+                                      //               width: MediaQuery.of(context)
+                                      //                       .size
+                                      //                       .width *
+                                      //                   0.9,
+                                      //               height: 10),
+                                      //           Container(
+                                      //               width: MediaQuery.of(context)
+                                      //                       .size
+                                      //                       .width *
+                                      //                   0.9,
+                                      //               height: 1,
+                                      //               color: Colors.grey),
+                                      //           Container(
+                                      //               width: MediaQuery.of(context)
+                                      //                       .size
+                                      //                       .width *
+                                      //                   0.9,
+                                      //               height: 10),
+                                      //         ]),
+                                      //     Container(
+                                      //       width: 50,
+                                      //       height: 50,
+                                      //       decoration: BoxDecoration(
+                                      //           color: Colors.white,
+                                      //           shape: BoxShape.circle),
+                                      //       child: Center(
+                                      //           child: Style()
+                                      //               .textBlackSmall('หรือ')),
+                                      //     ),
+                                      //   ],
+                                      // ),
+                                      // Container(
+                                      //   width: appDataModel.screenW * 0.9,
+                                      //   child: ElevatedButton(
+                                      //       onPressed: () {
+                                      //         Navigator.pushNamed(
+                                      //             context, '/login-page');
+                                      //       },
+                                      //       child: Row(
+                                      //         mainAxisAlignment:
+                                      //             MainAxisAlignment.spaceEvenly,
+                                      //         children: [
+                                      //           Container(
+                                      //             //   color: Colors.redAccent,
+                                      //             width: (appDataModel.screenW *
+                                      //                     0.9) *
+                                      //                 0.1,
+                                      //             child: Icon(
+                                      //               Icons.email,
+                                      //               color: Colors.white,
+                                      //               size: 20,
+                                      //             ),
+                                      //           ),
+                                      //           Container(
+                                      //               //color: Colors.green,
+                                      //               width: (appDataModel.screenW *
+                                      //                       0.9) *
+                                      //                   0.8,
+                                      //               child: Row(
+                                      //                 mainAxisAlignment:
+                                      //                     MainAxisAlignment
+                                      //                         .center,
+                                      //                 children: [
+                                      //                   Style().textWhite(
+                                      //                       'เข้าใช้งานด้วย Email'),
+                                      //                 ],
+                                      //               ))
+                                      //         ],
+                                      //       ),
+                                      //       style: ElevatedButton.styleFrom(
+                                      //           primary: Style().emailColor,
+                                      //           shape: RoundedRectangleBorder(
+                                      //               borderRadius:
+                                      //                   BorderRadius.circular(
+                                      //                       5)))),
+                                      // ),
+                                    ],
+                                  )
                                 ],
                               )),
                             )

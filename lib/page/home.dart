@@ -41,6 +41,7 @@ import 'package:hro/utility/updateToken.dart';
 import 'package:hro/widget/myDrawer.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:loadmore/loadmore.dart';
+import 'package:progress_indicators/progress_indicators.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 
@@ -506,7 +507,17 @@ class HomeState extends State<HomePage> {
             ),
             body: Container(
               color: Colors.grey.shade100,
-              child: Center(
+              child: (ranShopModel == null || ranProductModel == null )? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    JumpingDotsProgressIndicator(
+                      fontSize: 60,color: Style().darkColor,
+                    ),
+                  ],
+                ),
+              )
+                :Center(
                 child: LiquidPullToRefresh(
                   // key if you want to add
                   color: Colors.white,

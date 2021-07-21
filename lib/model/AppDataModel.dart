@@ -23,6 +23,7 @@ class AppDataModel {
   }
 
   Color cols = Color.fromARGB(1, 34, 150, 243);
+  String playStoreUrl ="https://play.google.com/store/apps/details?id=hroth.hro";
 
   String uid = '';
   String server = "http://58d7046b2892.sn.mynetname.net:3000";
@@ -32,6 +33,10 @@ class AppDataModel {
   set port(String port) {
     _port = port;
   }
+
+  String projectVersion;
+// Platform messages may fail, so we use a try/catch PlatformException.
+
 
   double distanceLimit;
 

@@ -10,24 +10,32 @@ String appStatusModelToJson(AppStatusModel data) => json.encode(data.toJson());
 
 class AppStatusModel {
   AppStatusModel({
-    this.customerOpen,
+    this.costDelivery,
+    this.projectVersion,
     this.dateopen,
+    this.customerOpen,
     this.status,
   });
 
-  String customerOpen;
+  String costDelivery;
+  String projectVersion;
   String dateopen;
+  String customerOpen;
   String status;
 
   factory AppStatusModel.fromJson(Map<String, dynamic> json) => AppStatusModel(
-    customerOpen: json["customerOpen"],
+    costDelivery: json["costDelivery"],
+    projectVersion: json["projectVersion"],
     dateopen: json["dateopen"],
+    customerOpen: json["customerOpen"],
     status: json["status"],
   );
 
   Map<String, dynamic> toJson() => {
-    "customerOpen": customerOpen,
+    "costDelivery": costDelivery,
+    "projectVersion": projectVersion,
     "dateopen": dateopen,
+    "customerOpen": customerOpen,
     "status": status,
   };
 }

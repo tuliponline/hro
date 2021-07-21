@@ -653,7 +653,7 @@ class DriversState extends State<DriversPage> {
           },
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10.0),
+              borderRadius: BorderRadius.circular(15),
               color: (e.status == '9' ||
                   e.status == '1' ||
                   e.status == '2' ||
@@ -670,7 +670,7 @@ class DriversState extends State<DriversPage> {
                       title:
                       Style().textFlexibleBackSize('order ' + e.orderId, 2, 14),
                       subtitle: Style().textBlackSize(
-                          'วันที่ ' + e.startTime, 12),
+                           e.startTime, 12),
                     )),
                 (e.status == '1')
                     ? Container(

@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get_version/get_version.dart';
 import 'package:hro/page/frist.dart';
 import 'package:hro/utility/style.dart';
 import 'package:splash_screen_view/SplashScreenView.dart';
@@ -11,8 +13,11 @@ class SplashPage extends StatefulWidget {
 }
 class _SplashPageState extends State<SplashPage> {
 
+
   @override
   Widget build(BuildContext context) {
+
+
     return SplashScreenView(
       navigateRoute:FirstPage(),
       duration: 500,

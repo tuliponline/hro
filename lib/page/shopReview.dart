@@ -5,6 +5,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:hro/model/AppDataModel.dart';
 import 'package:hro/model/ratingModel.dart';
 import 'package:hro/utility/style.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
 
@@ -136,6 +137,11 @@ class ShopReviewState extends State<ShopReviewPage> {
     return Container(
       child: Column(
         children: ratingListModel.mapIndexed((int index, element) {
+
+
+          var date = DateTime.fromMillisecondsSinceEpoch(int.parse(element.orderId));
+          var formattedDate = DateFormat('dd/MM/yyyy').format(date);
+
           double shopRate = double.parse(element.shopRate);
           int initialRating = shopRate.toInt();
           return Container(
@@ -143,6 +149,7 @@ class ShopReviewState extends State<ShopReviewPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  Row(children: [Style().textBlackSize(formattedDate, 12)],),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
@@ -168,7 +175,7 @@ class ShopReviewState extends State<ShopReviewPage> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [Style().textBlackSize(element.shopComment, 14)],
                   ), Container(
-                    margin: EdgeInsets.all(8),
+                    margin: EdgeInsets.all(0),
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(width: 0.3, color: Colors.grey),
